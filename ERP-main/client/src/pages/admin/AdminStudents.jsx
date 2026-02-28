@@ -5,6 +5,9 @@ import StudentProfileDrawer from "../../components/admin/StudentProfileDrawer";
 import PromoteStudentModal from "../../components/admin/PromoteStudentModal";
 import AssignTransportModal 
 from "./AssignTransportModal";
+import EditStudentModal from "../../components/admin/EditStudentModal";
+import TCGenerateModal from "../../components/admin/TCGenerateModal";
+import DocumentUploadModal from "../../components/admin/DocumentUploadModal";
 
 
 /* =====================================================
@@ -27,6 +30,9 @@ export default function AdminStudents() {
   const [selectedStudent, setSelectedStudent] = useState(null); // View
   const [promoteTarget, setPromoteTarget] = useState(null);     // Promote
   const [transportTarget, setTransportTarget] = useState(null); // Assign Transport
+  const [editTarget, setEditTarget] = useState(null);         // Edit
+  const [tcTarget, setTcTarget] = useState(null);             // TC Generate
+  const [docsTarget, setDocsTarget] = useState(null);         // Documents
 
   /* ================= FETCH STUDENTS ================= */
 
@@ -201,6 +207,11 @@ export default function AdminStudents() {
                 {status === "active" && (
                   <>
                     <Action
+                      label="Edit"
+                      color="green"
+                      onClick={() => setEditTarget(s)}
+                    />
+                    <Action
                       label="Promote"
                       color="yellow"
                       onClick={() => setPromoteTarget(s)}
@@ -209,6 +220,16 @@ export default function AdminStudents() {
                       label="Transfer"
                       color="blue"
                       onClick={() => transferStudent(s._id)}
+                    />
+                    <Action
+                      label="TC"
+                      color="purple"
+                      onClick={() => setTcTarget(s)}
+                    />
+                    <Action
+                      label="Docs"
+                      color="indigo"
+                      onClick={() => setDocsTarget(s)}
                     />
                     <Action
                       label="Expel"
@@ -248,6 +269,30 @@ export default function AdminStudents() {
             setTransportTarget(null);
             loadStudents();
           }}
+        />
+      )}
+
+      {editTarget && (
+        <EditStudentModal
+          student={editTarget}
+          onClose={() => setEditTarget(null)}
+          onSuccess={loadStudents}
+        />
+      )}
+
+      {tcTarget && (
+        <TCGenerateModal
+          student={tcTarget}
+          onClose={() => setTcTarget(null)}
+          onSuccess={loadStudents}
+        />
+      )}
+
+      {docsTarget && (
+        <DocumentUploadModal
+          student={docsTarget}
+          onClose={() => setDocsTarget(null)}
+          onSuccess={loadStudents}
         />
       )}
     </div>
@@ -290,7 +335,10 @@ function Action({ label, onClick, color }) {
   const colors = {
     yellow: "bg-yellow-100 hover:bg-yellow-200",
     blue: "bg-blue-100 hover:bg-blue-200",
-    red: "bg-red-100 hover:bg-red-200"
+    red: "bg-red-100 hover:bg-red-200",
+    green: "bg-green-100 hover:bg-green-200",
+    purple: "bg-purple-100 hover:bg-purple-200",
+    indigo: "bg-indigo-100 hover:bg-indigo-200"
   };
 
   return (

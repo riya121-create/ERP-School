@@ -112,6 +112,12 @@ const userSchema = new mongoose.Schema(
     joiningDate: Date,
     address: String,
 
+    // Subject assignments for teachers
+    subjects: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Subject"
+    }],
+
     /* =====================
        STUDENT DETAILS
     ====================== */
@@ -126,18 +132,42 @@ const userSchema = new mongoose.Schema(
 
     parentName: String,
     parentPhone: String,
-    /* =====================
-   TRANSPORT DETAILS
-===================== */
-transport: {
-  vehicle: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "TransportVehicle",
-    default: null
+    /* =========================
+     TRANSPORT DETAILS
+  ====================== */
+  transport: {
+    vehicle: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "TransportVehicle",
+      default: null
+    },
+    routeName: String,
+    stopName: String
   },
-  routeName: String,
-  stopName: String
-}
+
+  /* =========================
+     DOCUMENTS
+  ====================== */
+  documents: [{
+    filename: String,
+    originalName: String,
+    mimetype: String,
+    size: Number,
+    url: String,
+    uploadedAt: {
+      type: Date,
+      default: Date.now
+    },
+    uploadedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User"
+    },
+    type: {
+      type: String,
+      enum: ["photo", "certificate", "medical", "address", "general"],
+      default: "general"
+    }
+  }]
   },
   { timestamps: true }
 );

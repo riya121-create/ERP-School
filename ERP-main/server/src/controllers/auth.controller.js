@@ -41,16 +41,16 @@ export const login = async (req, res) => {
 
     /* =========================
        ADMIN / TEACHER / PARENT
-       (UNCHANGED SYSTEM)
+       (FIXED - ADD ROLE FILTER)
     ========================= */
     else {
-  user = await User.findOne({
-  $or: [
-    { email },
-    { phone: email }
-  ]
-});
-
+      user = await User.findOne({
+        role: intendedRole,
+        $or: [
+          { email },
+          { phone: email }
+        ]
+      });
     }
 
     // ❌ user not found

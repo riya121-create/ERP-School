@@ -5,6 +5,10 @@ import TransportVehicle from "../models/TransportVehicle.js";
 
 import Class from "../models/Class.js";
 import User from "../models/User.js";
+import Subject from "../models/Subject.js";
+import Salary from "../models/Salary.js";
+import Leave from "../models/Leave.js";
+import Performance from "../models/Performance.js";
 import bcrypt from "bcryptjs";
 
 /* =====================================================
@@ -362,6 +366,510 @@ if (student.academicStatus !== "active") {
 };
 
 /* =====================================================
+   UPDATE STUDENT
+===================================================== */
+export const updateStudent = async (req, res) => {
+  try {
+    const { studentId } = req.params;
+    const updateData = req.body;
+
+    const student = await User.findById(studentId);
+    if (!student || student.role !== "student") {
+      return res.status(404).json({ message: "Student not found" });
+    }
+
+    // Update allowed fields
+    const allowedFields = [
+      "name", "email", "phone", "rollNo", "admissionNo", 
+      "classId", "section", "parentId", "address", "bloodGroup",
+      "dateOfBirth", "gender", "emergencyContact", "medicalInfo"
+    ];
+
+    allowedFields.forEach(field => {
+      if (updateData[field] !== undefined) {
+        student[field] = updateData[field];
+      }
+    });
+
+    await student.save();
+
+    res.json({ 
+      message: "Student updated successfully",
+      student 
+    });
+  } catch (err) {
+    console.error("Update student error:", err);
+    res.status(500).json({ message: "Failed to update student" });
+  }
+};
+
+/* =====================================================
+   DELETE STUDENT
+===================================================== */
+export const deleteStudent = async (req, res) => {
+  try {
+    const { studentId } = req.params;
+
+    const student = await User.findById(studentId);
+    if (!student || student.role !== "student") {
+      return res.status(404).json({ message: "Student not found" });
+    }
+
+    await User.findByIdAndDelete(studentId);
+
+    res.json({ message: "Student deleted successfully" });
+  } catch (err) {
+    console.error("Delete student error:", err);
+    res.status(500).json({ message: "Failed to delete student" });
+  }
+};
+
+/* =====================================================
+   GENERATE TRANSFER CERTIFICATE (TC)
+===================================================== */
+export const generateTransferCertificate = async (req, res) => {
+  try {
+    const { studentId } = req.params;
+    const { reason, lastDate, newSchool } = req.body;
+
+    const student = await User.findById(studentId)
+      .populate('classId', 'name section')
+      .populate('parentId', 'name phone address');
+
+    if (!student || student.role !== "student") {
+      return res.status(404).json({ message: "Student not found" });
+    }
+
+    // Generate TC data
+    const tcData = {
+      studentName: student.name,
+      admissionNo: student.admissionNo,
+      rollNo: student.rollNo,
+      class: student.classId ? `${student.classId.name}-${student.classId.section}` : 'N/A',
+      dateOfBirth: student.dateOfBirth,
+      admissionDate: student.createdAt,
+      lastDateAttended: lastDate || new Date(),
+      reasonForLeaving: reason || "Transfer to another school",
+      newSchool: newSchool || "Not specified",
+      parentName: student.parentId?.name || "Not specified",
+      parentContact: student.parentId?.phone || "Not specified",
+      parentAddress: student.parentId?.address || "Not specified",
+      certificateNumber: `TC-${Date.now()}`,
+      issuedDate: new Date(),
+      schoolName: "Echelon School",
+      schoolAddress: "School Address, City, State",
+      schoolPhone: "+91 1234567890",
+      schoolEmail: "info@echelonschool.com",
+      principalName: "Principal Name",
+      status: "Issued"
+    };
+
+    // Update student status
+    student.academicStatus = "transferred";
+    student.statusReason = reason || "Transfer to another school";
+    student.statusChangedAt = new Date();
+    await student.save();
+
+    res.json({
+      message: "Transfer certificate generated successfully",
+      transferCertificate: tcData
+    });
+
+  } catch (err) {
+    console.error("Generate TC error:", err);
+    res.status(500).json({ message: "Failed to generate transfer certificate" });
+  }
+};
+
+/* =====================================================
+   UPLOAD STUDENT DOCUMENTS
+===================================================== */
+export const uploadStudentDocuments = async (req, res) => {
+  try {
+    const { studentId } = req.params;
+    
+    const student = await User.findById(studentId);
+    if (!student || student.role !== "student") {
+      return res.status(404).json({ message: "Student not found" });
+    }
+
+    // Handle multiple file uploads
+    const uploadedFiles = [];
+    
+    if (req.files && req.files.length > 0) {
+      for (const file of req.files) {
+        const document = {
+          filename: file.originalname,
+          originalName: file.originalname,
+          mimetype: file.mimetype,
+          size: file.size,
+          url: `/uploads/documents/${file.filename}`,
+          uploadedAt: new Date(),
+          uploadedBy: req.user.id,
+          type: req.body.documentType || 'general'
+        };
+        uploadedFiles.push(document);
+      }
+    }
+
+    // Add documents to student record
+    if (!student.documents) {
+      student.documents = [];
+    }
+    student.documents.push(...uploadedFiles);
+    await student.save();
+
+    res.json({
+      message: "Documents uploaded successfully",
+      documents: uploadedFiles
+    });
+
+  } catch (err) {
+    console.error("Upload documents error:", err);
+    res.status(500).json({ message: "Failed to upload documents" });
+  }
+};
+
+/* =====================================================
+   GET STUDENT DOCUMENTS
+===================================================== */
+export const getStudentDocuments = async (req, res) => {
+  try {
+    const { studentId } = req.params;
+    
+    const student = await User.findById(studentId).select('documents');
+    if (!student || student.role !== "student") {
+      return res.status(404).json({ message: "Student not found" });
+    }
+
+    res.json({
+      documents: student.documents || []
+    });
+
+  } catch (err) {
+    console.error("Get documents error:", err);
+    res.status(500).json({ message: "Failed to get documents" });
+  }
+};
+
+/* =====================================================
+   GET TEACHER BY ID
+===================================================== */
+export const getTeacherById = async (req, res) => {
+  try {
+    const { teacherId } = req.params;
+
+    const teacher = await User.findById(teacherId)
+      .select("-password")
+      .populate('subjects', 'name code type');
+
+    if (!teacher || teacher.role !== "teacher") {
+      return res.status(404).json({ message: "Teacher not found" });
+    }
+
+    res.json({ teacher });
+  } catch (err) {
+    console.error("Get teacher by ID error:", err);
+    res.status(500).json({ message: "Failed to get teacher" });
+  }
+};
+
+/* =====================================================
+   UPDATE TEACHER
+===================================================== */
+export const updateTeacher = async (req, res) => {
+  try {
+    const { teacherId } = req.params;
+    const updateData = req.body;
+
+    const teacher = await User.findById(teacherId);
+    if (!teacher || teacher.role !== "teacher") {
+      return res.status(404).json({ message: "Teacher not found" });
+    }
+
+    // Update allowed fields
+    const allowedFields = [
+      "name", "email", "phone", "employeeId", "department", 
+      "qualification", "experience", "gender", "joiningDate", 
+      "address", "isActive"
+    ];
+
+    allowedFields.forEach(field => {
+      if (updateData[field] !== undefined) {
+        teacher[field] = updateData[field];
+      }
+    });
+
+    await teacher.save();
+
+    res.json({ 
+      message: "Teacher updated successfully",
+      teacher 
+    });
+  } catch (err) {
+    console.error("Update teacher error:", err);
+    res.status(500).json({ message: "Failed to update teacher" });
+  }
+};
+
+/* =====================================================
+   DELETE TEACHER
+===================================================== */
+export const deleteTeacher = async (req, res) => {
+  try {
+    const { teacherId } = req.params;
+
+    const teacher = await User.findById(teacherId);
+    if (!teacher || teacher.role !== "teacher") {
+      return res.status(404).json({ message: "Teacher not found" });
+    }
+
+    // Check if teacher is assigned to any class
+    const assignedClass = await Class.findOne({ teacherId });
+    if (assignedClass) {
+      return res.status(400).json({ 
+        message: "Cannot delete teacher. Teacher is assigned to a class." 
+      });
+    }
+
+    await User.findByIdAndDelete(teacherId);
+
+    res.json({ message: "Teacher deleted successfully" });
+  } catch (err) {
+    console.error("Delete teacher error:", err);
+    res.status(500).json({ message: "Failed to delete teacher" });
+  }
+};
+
+/* =====================================================
+   ASSIGN SUBJECTS TO TEACHER
+===================================================== */
+export const assignSubjectsToTeacher = async (req, res) => {
+  try {
+    const { teacherId } = req.params;
+    const { subjectIds } = req.body;
+
+    const teacher = await User.findById(teacherId);
+    if (!teacher || teacher.role !== "teacher") {
+      return res.status(404).json({ message: "Teacher not found" });
+    }
+
+    // Update teacher's subjects
+    teacher.subjects = subjectIds;
+    await teacher.save();
+
+    res.json({ 
+      message: "Subjects assigned successfully",
+      subjects: teacher.subjects 
+    });
+  } catch (err) {
+    console.error("Assign subjects error:", err);
+    res.status(500).json({ message: "Failed to assign subjects" });
+  }
+};
+
+/* =====================================================
+   GET TEACHER SUBJECTS
+===================================================== */
+export const getTeacherSubjects = async (req, res) => {
+  try {
+    const { teacherId } = req.params;
+
+    const teacher = await User.findById(teacherId)
+      .populate('subjects', 'name code type');
+
+    if (!teacher || teacher.role !== "teacher") {
+      return res.status(404).json({ message: "Teacher not found" });
+    }
+
+    res.json({ subjects: teacher.subjects || [] });
+  } catch (err) {
+    console.error("Get teacher subjects error:", err);
+    res.status(500).json({ message: "Failed to get teacher subjects" });
+  }
+};
+
+/* =====================================================
+   SALARY MANAGEMENT
+===================================================== */
+export const createSalaryStructure = async (req, res) => {
+  try {
+    const { teacherId, basicSalary, allowances, deductions, effectiveDate } = req.body;
+
+    const teacher = await User.findById(teacherId);
+    if (!teacher || teacher.role !== "teacher") {
+      return res.status(404).json({ message: "Teacher not found" });
+    }
+
+    const salaryStructure = {
+      teacherId,
+      basicSalary,
+      allowances: allowances || [],
+      deductions: deductions || [],
+      effectiveDate,
+      totalSalary: basicSalary + (allowances?.reduce((sum, a) => sum + a.amount, 0) || 0) - (deductions?.reduce((sum, d) => sum + d.amount, 0) || 0),
+      isActive: true,
+      createdAt: new Date()
+    };
+
+    // Save to Salary model
+    const salary = await Salary.create(salaryStructure);
+
+    res.json({ 
+      message: "Salary structure created successfully",
+      salary 
+    });
+  } catch (err) {
+    console.error("Create salary structure error:", err);
+    res.status(500).json({ message: "Failed to create salary structure" });
+  }
+};
+
+export const getTeacherSalary = async (req, res) => {
+  try {
+    const { teacherId } = req.params;
+
+    const salary = await Salary.findOne({ 
+      teacherId, 
+      isActive: true 
+    }).sort({ effectiveDate: -1 });
+
+    if (!salary) {
+      return res.status(404).json({ message: "Salary structure not found" });
+    }
+
+    res.json({ salary });
+  } catch (err) {
+    console.error("Get teacher salary error:", err);
+    res.status(500).json({ message: "Failed to get teacher salary" });
+  }
+};
+
+/* =====================================================
+   LEAVE MANAGEMENT
+===================================================== */
+export const createLeaveRequest = async (req, res) => {
+  try {
+    const { teacherId, leaveType, startDate, endDate, reason } = req.body;
+
+    const teacher = await User.findById(teacherId);
+    if (!teacher || teacher.role !== "teacher") {
+      return res.status(404).json({ message: "Teacher not found" });
+    }
+
+    const leaveRequest = await Leave.create({
+      teacherId,
+      leaveType,
+      startDate,
+      endDate,
+      reason,
+      status: "pending",
+      requestedBy: req.user.id,
+      createdAt: new Date()
+    });
+
+    res.json({ 
+      message: "Leave request submitted successfully",
+      leaveRequest 
+    });
+  } catch (err) {
+    console.error("Create leave request error:", err);
+    res.status(500).json({ message: "Failed to create leave request" });
+  }
+};
+
+export const approveLeaveRequest = async (req, res) => {
+  try {
+    const { leaveId } = req.params;
+    const { status, comments } = req.body;
+
+    const leave = await Leave.findById(leaveId);
+
+    if (!leave) {
+      return res.status(404).json({ message: "Leave request not found" });
+    }
+
+    leave.status = status;
+    leave.comments = comments;
+    leave.approvedBy = req.user.id;
+    leave.approvedAt = new Date();
+
+    await leave.save();
+
+    res.json({ 
+      message: `Leave request ${status} successfully`,
+      leave 
+    });
+  } catch (err) {
+    console.error("Approve leave request error:", err);
+    res.status(500).json({ message: "Failed to approve leave request" });
+  }
+};
+
+export const getTeacherLeaves = async (req, res) => {
+  try {
+    const { teacherId } = req.params;
+
+    const leaves = await Leave.find({ teacherId })
+      .populate('approvedBy', 'name')
+      .sort({ createdAt: -1 });
+
+    res.json({ leaves });
+  } catch (err) {
+    console.error("Get teacher leaves error:", err);
+    res.status(500).json({ message: "Failed to get teacher leaves" });
+  }
+};
+
+/* =====================================================
+   PERFORMANCE MANAGEMENT
+===================================================== */
+export const createPerformanceNote = async (req, res) => {
+  try {
+    const { teacherId, evaluationPeriod, criteria, ratings, comments, overallRating } = req.body;
+
+    const teacher = await User.findById(teacherId);
+    if (!teacher || teacher.role !== "teacher") {
+      return res.status(404).json({ message: "Teacher not found" });
+    }
+
+    const performance = await Performance.create({
+      teacherId,
+      evaluationPeriod,
+      criteria,
+      ratings,
+      comments,
+      overallRating,
+      evaluatedBy: req.user.id,
+      createdAt: new Date()
+    });
+
+    res.json({ 
+      message: "Performance evaluation created successfully",
+      performance 
+    });
+  } catch (err) {
+    console.error("Create performance note error:", err);
+    res.status(500).json({ message: "Failed to create performance evaluation" });
+  }
+};
+
+export const getTeacherPerformance = async (req, res) => {
+  try {
+    const { teacherId } = req.params;
+
+    const performances = await Performance.find({ teacherId })
+      .populate('evaluatedBy', 'name')
+      .sort({ createdAt: -1 });
+
+    res.json({ performances });
+  } catch (err) {
+    console.error("Get teacher performance error:", err);
+    res.status(500).json({ message: "Failed to get teacher performance" });
+  }
+};
+
+/* =====================================================
    STUDENT STATUS ACTIONS
 ===================================================== */
 export const expelStudent = async (req, res) => {
@@ -597,3 +1105,4 @@ export const assignTransportToStudent = async (req, res) => {
     });
   }
 };
+

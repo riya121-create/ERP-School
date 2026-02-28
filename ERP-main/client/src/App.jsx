@@ -30,6 +30,12 @@ import AdminLayoutRoute from "@/pages/admin/AdminLayoutRoute";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import Teachers from "./pages/admin/Teachers";
 import AddTeacher from "./pages/admin/AddTeacher";
+import EditTeacher from "./pages/admin/EditTeacher";
+import TeacherSubjects from "./pages/admin/TeacherSubjects";
+import TeacherSalary from "./pages/admin/TeacherSalary";
+import TeacherLeave from "./pages/admin/TeacherLeave";
+import TeacherPerformance from "./pages/admin/TeacherPerformance";
+import TestAPI from "./pages/admin/TestAPI";
 import Classes from "./pages/admin/Classes";
 import ClassDetails from "./pages/admin/ClassDetails";
 import AddStudent from "./pages/admin/AddStudent";
@@ -43,6 +49,8 @@ import TeacherNotes from "./pages/teacher/TeacherNotes";
 import TeacherPublishResults from "./pages/teacher/TeacherPublishResults";
 import StudentDashboard from "./pages/student/StudentDashboard";
 import ParentDashboard from "./pages/parent/ParentDashboard";
+import ParentDashboardEnhanced from "./pages/parent/ParentDashboardEnhanced";
+import ChildProfile from "./pages/parent/ChildProfile";
 import TeacherCreateExam from "./pages/teacher/TeacherCreateExam"
 
 
@@ -126,6 +134,12 @@ function App() {
     <Route path="students" element={<AdminStudents />} />
     <Route path="teachers" element={<Teachers />} />
     <Route path="teachers/add" element={<AddTeacher />} />
+    <Route path="teachers/edit/:teacherId" element={<EditTeacher />} />
+    <Route path="teachers/:teacherId/subjects" element={<TeacherSubjects />} />
+    <Route path="teachers/:teacherId/salary" element={<TeacherSalary />} />
+    <Route path="teachers/:teacherId/leave" element={<TeacherLeave />} />
+    <Route path="teachers/:teacherId/performance" element={<TeacherPerformance />} />
+    <Route path="test-api" element={<TestAPI />} />
     <Route path="teacher-activity" element={<AdminTeacherActivity />} />
 
     {/* ===== TIMETABLE ===== */}
@@ -208,7 +222,9 @@ function App() {
 
         {/* ================= PARENT ================= */}
         <Route path="/parent" element={<ProtectedRoute role="parent" />}>
-          <Route index element={<ParentDashboard />} />
+          <Route index element={<ParentDashboardEnhanced />} />
+          <Route path="child-profile/:childId" element={<ChildProfile />} />
+          <Route path="profile/:childId" element={<ChildProfile />} />
         </Route>
 
       </Routes>

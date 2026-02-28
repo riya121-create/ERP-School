@@ -20,6 +20,34 @@ function Teachers() {
 
   const activeCount = teachers.filter(t => t.isActive).length;
 
+  const handleDelete = async (teacherId) => {
+    if (!confirm("Are you sure you want to delete this teacher?")) return;
+    
+    try {
+      await api.delete(`/admin/teachers/${teacherId}`);
+      alert("Teacher deleted successfully");
+      setTeachers(teachers.filter(t => t._id !== teacherId));
+    } catch (error) {
+      alert(error.response?.data?.message || "Failed to delete teacher");
+    }
+  };
+
+  const handleAssignSubjects = (teacherId) => {
+    navigate(`/admin/teachers/${teacherId}/subjects`);
+  };
+
+  const handleSalary = (teacherId) => {
+    navigate(`/admin/teachers/${teacherId}/salary`);
+  };
+
+  const handleLeave = (teacherId) => {
+    navigate(`/admin/teachers/${teacherId}/leave`);
+  };
+
+  const handlePerformance = (teacherId) => {
+    navigate(`/admin/teachers/${teacherId}/performance`);
+  };
+
   return (
     <>
       {/* ===== HEADER ===== */}
@@ -65,13 +93,14 @@ function Teachers() {
               <Th>Department</Th>
               <Th>Contact</Th>
               <Th>Status</Th>
+              <Th>Actions</Th>
             </tr>
           </thead>
 
           <tbody>
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan="4" className="p-8 text-center text-gray-500">
+                <td colSpan="5" className="p-8 text-center text-gray-500">
                   No teachers found
                 </td>
               </tr>
@@ -99,6 +128,47 @@ function Teachers() {
 
                   <td className="p-4">
                     <StatusBadge active={t.isActive} />
+                  </td>
+
+                  <td className="p-4">
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => navigate(`/admin/teachers/edit/${t._id}`)}
+                        className="px-3 py-1 text-xs bg-blue-100 hover:bg-blue-200 rounded"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleAssignSubjects(t._id)}
+                        className="px-3 py-1 text-xs bg-green-100 hover:bg-green-200 rounded"
+                      >
+                        Subjects
+                      </button>
+                      <button
+                        onClick={() => handleSalary(t._id)}
+                        className="px-3 py-1 text-xs bg-purple-100 hover:bg-purple-200 rounded"
+                      >
+                        Salary
+                      </button>
+                      <button
+                        onClick={() => handleLeave(t._id)}
+                        className="px-3 py-1 text-xs bg-yellow-100 hover:bg-yellow-200 rounded"
+                      >
+                        Leave
+                      </button>
+                      <button
+                        onClick={() => handlePerformance(t._id)}
+                        className="px-3 py-1 text-xs bg-indigo-100 hover:bg-indigo-200 rounded"
+                      >
+                        Performance
+                      </button>
+                      <button
+                        onClick={() => handleDelete(t._id)}
+                        className="px-3 py-1 text-xs bg-red-100 hover:bg-red-200 rounded"
+                      >
+                        Delete
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))
