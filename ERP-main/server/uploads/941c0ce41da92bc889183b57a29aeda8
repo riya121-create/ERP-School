@@ -1,0 +1,4 @@
+name,admissionNo,rollNo,gender,dob,parentName,parentPhone,address
+Aarav Sharma,ADM001,32,Male,2006-08-16,Anil Sharma,9876543210,"Palwal, Haryana"
+Ananya Verma,ADM002,34,Female,2007-09-17,Amit Verma,9876501234,"Faridabad, Haryana"
+Anubhav,ADM003,34,Male,2009-07-2008,Ankit Verma,9873091640,Delhi

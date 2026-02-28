@@ -1,0 +1,57 @@
+/* ===============================
+   GOOGLE FONT (ALWAYS ON TOP)
+   =============================== */
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
+
+/* ===============================
+   TAILWIND BASE
+   =============================== */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ===============================
+   GLOBAL FONT
+   =============================== */
+html {
+  font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+/* ===============================
+   CUSTOM ANIMATIONS
+   =============================== */
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-in {
+  animation: slideInRight 0.35s ease-out forwards;
+}
+
+/* ===============================
+   COMPONENT CLASSES
+   =============================== */
+@layer components {
+  .input {
+    @apply w-full px-3 py-2 border border-gray-300 rounded-lg text-sm
+    focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500;
+  }
+
+  .btn-primary {
+    @apply px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium
+    hover:bg-blue-700 transition;
+  }
+
+  .btn-secondary {
+    @apply px-4 py-2 border border-gray-300 rounded-lg text-sm
+    hover:bg-gray-100 transition;
+  }
+}
