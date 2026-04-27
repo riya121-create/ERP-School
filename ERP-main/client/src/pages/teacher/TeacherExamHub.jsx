@@ -1,11 +1,13 @@
 import { useNavigate } from "react-router-dom"
 import { motion } from "framer-motion"
+import BackButton from "../../components/BackButton"
 
 export default function TeacherExamHub() {
   const navigate = useNavigate()
 
   return (
-    <div className="min-h-screen px-10 py-12 text-white bg-[#0B1220]">
+    <div className="text-white">
+      <BackButton to="/teacher" label="Dashboard" />
       <h1 className="text-3xl font-extrabold mb-12 tracking-tight">
         Exam Center
       </h1>

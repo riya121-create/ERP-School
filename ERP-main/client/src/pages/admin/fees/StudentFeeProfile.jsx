@@ -1,202 +1,134 @@
 import { useEffect, useState } from "react";
 import api from "@/services/api";
+import { Receipt, TrendingUp, AlertCircle } from "lucide-react";
 
-/*
-=====================================================
-STUDENT FEE PROFILE — FAANG / PROD VERSION
-• Clear financial snapshot
-• Auditable payment history
-• Safe loading + error handling
-• Mobile-first counter UX
-=====================================================
-*/
+const fmt    = n => `₹${Number(n || 0).toLocaleString("en-IN")}`;
+const fmtDate = d => d ? new Date(d).toLocaleDateString("en-IN", { day:"numeric", month:"short", year:"numeric" }) : "—";
+
+const MODE_ICON = { CASH: "💵", UPI: "📱", BANK: "🏦", ONLINE: "💳" };
 
 export default function StudentFeeProfile({ studentId }) {
-  const [fee, setFee] = useState(null);
+  const [fee, setFee]         = useState(null);
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [error, setError]     = useState("");
 
-  /* ================= LOAD DATA ================= */
   useEffect(() => {
     if (!studentId) return;
-
     let mounted = true;
-
-    (async () => {
-      try {
-        setLoading(true);
-        setError("");
-
-        const [feeRes, payRes] = await Promise.all([
-          api.get(`/admin/fees/student/${studentId}`),
-          api.get(`/admin/fees/payments/${studentId}`)
-        ]);
-
-        if (!mounted) return;
-
-        setFee(feeRes.data);
-        setPayments(Array.isArray(payRes.data) ? payRes.data : []);
-      } catch (err) {
-        console.error("Fee profile error:", err);
-        setError("Failed to load fee details");
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    })();
-
-    return () => {
-      mounted = false;
-    };
+    setLoading(true); setError("");
+    Promise.all([
+      api.get(`/admin/fees/student/${studentId}`),
+      api.get(`/admin/fees/payments/${studentId}`),
+    ]).then(([fr, pr]) => {
+      if (!mounted) return;
+      setFee(fr.data);
+      setPayments(Array.isArray(pr.data) ? pr.data : []);
+    }).catch(() => setError("Failed to load fee details"))
+      .finally(() => { if (mounted) setLoading(false); });
+    return () => { mounted = false; };
   }, [studentId]);
 
-  /* ================= STATES ================= */
+  if (loading) return (
+    <div className="rounded-2xl border border-white/[0.08] bg-[#161616] p-5 animate-pulse space-y-3">
+      <div className="h-4 w-40 bg-white/[0.06] rounded" />
+      <div className="grid grid-cols-4 gap-3">{[1,2,3,4].map(i => <div key={i} className="h-16 rounded-xl bg-white/[0.05]" />)}</div>
+    </div>
+  );
 
-  if (loading) {
-    return (
-      <div className="p-6 bg-white rounded-2xl border animate-pulse">
-        <div className="h-4 bg-gray-200 rounded w-1/3 mb-4" />
-        <div className="grid grid-cols-2 gap-3">
-          <SkeletonCard />
-          <SkeletonCard />
-          <SkeletonCard />
-          <SkeletonCard />
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-red-700">
-        {error}
-      </div>
-    );
-  }
+  if (error) return (
+    <div className="flex items-center gap-3 rounded-xl border border-red-500/30 bg-red-500/10 p-4">
+      <AlertCircle size={16} className="text-red-400 flex-shrink-0" />
+      <p className="text-sm text-red-400">{error}</p>
+    </div>
+  );
 
   if (!fee) return null;
 
-  /* ================= UI ================= */
+  const paidPct = fee.totalAnnual > 0 ? Math.round((fee.totalPaid / fee.totalAnnual) * 100) : 0;
 
   return (
-    <div className="space-y-6">
-
-      {/* HEADER */}
-      <div>
-        <h2 className="text-xl font-bold">
-          📘 Student Fee Profile
-        </h2>
-        <p className="text-sm text-gray-500">
-          Financial snapshot & payment history
-        </p>
+    <div className="rounded-2xl border border-white/[0.08] bg-[#161616] overflow-hidden">
+      {/* header */}
+      <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06]">
+        <div className="flex items-center gap-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+          <TrendingUp size={13} className="text-indigo-400" /> Fee Profile
+        </div>
+        <span className={`flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border
+          ${fee.status === "PAID"
+            ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/25"
+            : fee.totalDue > 0
+            ? "bg-red-500/15 text-red-400 border-red-500/25"
+            : "bg-amber-500/15 text-amber-400 border-amber-500/25"
+          }`}>
+          <span className={`w-1.5 h-1.5 rounded-full ${fee.status === "PAID" ? "bg-emerald-400" : fee.totalDue > 0 ? "bg-red-400" : "bg-amber-400"}`} />
+          {fee.status}
+        </span>
       </div>
 
-      {/* SNAPSHOT */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <StatCard
-          label="Annual Fee"
-          value={formatINR(fee.totalAnnual)}
-        />
-        <StatCard
-          label="Paid"
-          value={formatINR(fee.totalPaid)}
-        />
-        <StatCard
-          label="Due"
-          value={formatINR(fee.totalDue)}
-          danger
-        />
-        <StatCard
-          label="Status"
-          value={fee.status}
-          badge
-        />
-      </div>
-
-      {/* PAYMENT HISTORY */}
-      <div className="bg-white border rounded-2xl overflow-hidden">
-
-        <div className="bg-gray-100 px-4 py-3 font-semibold text-sm">
-          Payment History
+      <div className="p-5 space-y-4">
+        {/* stats */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <FeeCard label="Annual Fee" value={fmt(fee.totalAnnual)} color="indigo" />
+          <FeeCard label="Paid"       value={fmt(fee.totalPaid)}   color="emerald" />
+          <FeeCard label="Due"        value={fmt(fee.totalDue)}    color={fee.totalDue > 0 ? "red" : "emerald"} />
+          <FeeCard label="Progress"   value={`${paidPct}%`}        color="sky" />
         </div>
 
-        {payments.length === 0 ? (
-          <div className="p-6 text-center text-gray-500 text-sm">
-            No payments recorded yet
+        {/* progress bar */}
+        <div>
+          <div className="flex justify-between text-xs text-gray-600 mb-1.5">
+            <span>Payment Progress</span><span>{paidPct}%</span>
           </div>
-        ) : (
-          payments.map(p => (
-            <div
-              key={p._id}
-              className="grid grid-cols-3 md:grid-cols-5 gap-2 px-4 py-3 text-sm border-t"
-            >
-              <div className="font-mono text-xs">
-                {p.receiptNo || "—"}
+          <div className="h-2 rounded-full bg-white/[0.06] overflow-hidden">
+            <div className={`h-full rounded-full transition-all duration-700 ${paidPct >= 100 ? "bg-emerald-500" : paidPct >= 50 ? "bg-indigo-500" : "bg-amber-500"}`}
+              style={{ width: `${Math.min(paidPct, 100)}%` }} />
+          </div>
+        </div>
+
+        {/* payment history */}
+        <div>
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+            <Receipt size={12} /> Payment History
+          </p>
+          {payments.length === 0 ? (
+            <p className="text-sm text-gray-600 py-4 text-center">No payments recorded yet</p>
+          ) : (
+            <div className="rounded-xl border border-white/[0.07] overflow-hidden">
+              <div className="grid grid-cols-[1fr_1fr_1fr_1fr_1fr] gap-2 px-4 py-2.5 bg-white/[0.04] border-b border-white/[0.06] text-[11px] font-semibold uppercase tracking-wider text-gray-600">
+                <span>Receipt</span><span>Amount</span><span>Mode</span><span>Date</span><span>Ref</span>
               </div>
-
-              <div className="font-semibold">
-                {formatINR(p.amount)}
-              </div>
-
-              <div className="hidden md:block text-gray-600">
-                {p.paymentMode || "—"}
-              </div>
-
-              <div className="hidden md:block text-gray-600">
-              {formatDate(p.paidAt)}
-
-
-              </div>
-
-              <div className="text-right text-xs text-gray-500">
-                {p.referenceNo || "—"}
+              <div className="divide-y divide-white/[0.04]">
+                {payments.map(p => (
+                  <div key={p._id} className="grid grid-cols-[1fr_1fr_1fr_1fr_1fr] gap-2 px-4 py-3 text-sm items-center hover:bg-white/[0.02] transition">
+                    <span className="font-mono text-xs text-gray-500">{p.receiptNo || "—"}</span>
+                    <span className="font-semibold text-emerald-400">{fmt(p.amount)}</span>
+                    <span className="text-gray-400">{MODE_ICON[p.paymentMode] || ""} {p.paymentMode || "—"}</span>
+                    <span className="text-gray-400 text-xs">{fmtDate(p.paidAt)}</span>
+                    <span className="text-gray-600 text-xs truncate">{p.referenceNo || "—"}</span>
+                  </div>
+                ))}
               </div>
             </div>
-          ))
-        )}
+          )}
+        </div>
       </div>
     </div>
   );
 }
 
-/* ================= SMALL COMPONENTS ================= */
-
-const StatCard = ({ label, value, danger, badge }) => (
-  <div
-    className={`border rounded-xl p-4 ${
-      danger ? "bg-red-50 border-red-200" : "bg-white"
-    }`}
-  >
-    <p className="text-xs text-gray-500">
-      {label}
-    </p>
-    <p
-      className={`text-lg font-bold ${
-        danger ? "text-red-600" : ""
-      }`}
-    >
-      {value}
-    </p>
-
-    {badge && (
-      <span className="inline-block mt-1 text-xs bg-gray-200 px-2 py-0.5 rounded">
-        {value}
-      </span>
-    )}
-  </div>
-);
-
-const SkeletonCard = () => (
-  <div className="p-4 border rounded-xl">
-    <div className="h-3 bg-gray-200 rounded w-1/2 mb-2" />
-    <div className="h-5 bg-gray-200 rounded w-3/4" />
-  </div>
-);
-
-/* ================= HELPERS ================= */
-
-const formatINR = n =>
-  `₹${Number(n || 0).toLocaleString("en-IN")}`;
-
-const formatDate = d =>
-  d ? new Date(d).toLocaleDateString("en-IN") : "—";
+function FeeCard({ label, value, color }) {
+  const colors = {
+    indigo:  { bg: "bg-indigo-500/10",  text: "text-indigo-400",  border: "border-indigo-500/20"  },
+    emerald: { bg: "bg-emerald-500/10", text: "text-emerald-400", border: "border-emerald-500/20" },
+    red:     { bg: "bg-red-500/10",     text: "text-red-400",     border: "border-red-500/20"     },
+    sky:     { bg: "bg-sky-500/10",     text: "text-sky-400",     border: "border-sky-500/20"     },
+  };
+  const c = colors[color] || colors.indigo;
+  return (
+    <div className={`rounded-xl border ${c.border} ${c.bg} p-3`}>
+      <p className="text-[11px] text-gray-600 uppercase tracking-wider font-medium mb-1">{label}</p>
+      <p className={`text-lg font-bold ${c.text}`}>{value}</p>
+    </div>
+  );
+}

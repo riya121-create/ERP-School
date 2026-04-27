@@ -55,3 +55,25 @@ html {
     hover:bg-gray-100 transition;
   }
 }
+
+/* ===============================
+   DARK SCROLLBAR (admin panel)
+   =============================== */
+.bg-\[#0f0f0f\] *::-webkit-scrollbar,
+.bg-\[#111111\] *::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.bg-\[#0f0f0f\] *::-webkit-scrollbar-track,
+.bg-\[#111111\] *::-webkit-scrollbar-track {
+  background: transparent;
+}
+.bg-\[#0f0f0f\] *::-webkit-scrollbar-thumb,
+.bg-\[#111111\] *::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.1);
+  border-radius: 9999px;
+}
+.bg-\[#0f0f0f\] *::-webkit-scrollbar-thumb:hover,
+.bg-\[#111111\] *::-webkit-scrollbar-thumb:hover {
+  background: rgba(255,255,255,0.2);
+}

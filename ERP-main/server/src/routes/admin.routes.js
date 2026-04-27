@@ -29,6 +29,7 @@ import {
   generateTransferCertificate,
   uploadStudentDocuments,
   getStudentDocuments,
+  getStudentById,
   updateTeacher,
   deleteTeacher,
   assignSubjectsToTeacher,
@@ -119,6 +120,9 @@ router.post("/students", protect(["admin"]), createStudent);
 
 // 🔥 MAIN STUDENT LIST (STATUS BASED)
 router.get("/students", protect(["admin"]), getStudentsByStatus);
+
+// Single student by ID
+router.get("/students/:studentId", protect(["admin"]), getStudentById);
 
 // class-wise active students
 router.get(

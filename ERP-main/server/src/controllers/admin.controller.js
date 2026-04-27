@@ -197,6 +197,13 @@ export const createStudent = async (req, res) => {
       });
     }
 
+    // Validate parent phone number (must be exactly 10 digits if provided)
+    if (parentPhone && (parentPhone.length !== 10 || !/^\d{10}$/.test(parentPhone))) {
+      return res.status(400).json({
+        message: "Parent phone number must be exactly 10 digits"
+      });
+    }
+
     const cls = await Class.findById(classId);
     if (!cls) {
       return res.status(404).json({ message: "Class not found" });
@@ -312,7 +319,7 @@ export const getStudentsByClass = async (req, res) => {
   academicStatus: "active",
   isActive: true
 })
-.select("name rollNo admissionNo parentName parentPhone address")
+.select("name rollNo admissionNo gender parentName parentPhone address academicStatus")
 .sort({ rollNo: 1 });
 
 
@@ -932,6 +939,25 @@ export const getStudentsByStatus = async (req, res) => {
 
 
     res.json(students);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+/* =====================================================
+   GET SINGLE STUDENT BY ID
+===================================================== */
+export const getStudentById = async (req, res) => {
+  try {
+    const { studentId } = req.params;
+    const student = await User.findById(studentId)
+      .populate("classId", "name section")
+      .select("-password");
+
+    if (!student || student.role !== "student") {
+      return res.status(404).json({ message: "Student not found" });
+    }
+    res.json(student);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

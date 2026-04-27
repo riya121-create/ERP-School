@@ -103,6 +103,13 @@ export const bulkUploadStudents = async (req, res) => {
               continue;
             }
 
+            /* ===== PHONE VALIDATION ===== */
+            if (s.parentPhone && (s.parentPhone.length !== 10 || !/^\d{10}$/.test(s.parentPhone))) {
+              console.error("❌ Invalid phone number:", s.parentPhone);
+              failed++;
+              continue;
+            }
+
             /* ===== AUTO EMAIL ===== */
             const generatedEmail =
               `${s.admissionNo.toLowerCase()}@school.com`;

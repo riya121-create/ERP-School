@@ -26,14 +26,16 @@ function Login() {
         intendedRole
       })
 
-      const { token, role, forcePasswordChange,sessionToken  } = res.data
+      const { token, role, forcePasswordChange, sessionToken, name, email } = res.data
 
       // 🔐 Save auth
       localStorage.setItem("token", token)
       localStorage.setItem("role", role)
-      
-//  ONLY FOR TEACHER
- if (role === "teacher" && sessionToken) {
+      if (name)  localStorage.setItem("name", name)
+      if (email) localStorage.setItem("email", email)
+
+      // ONLY FOR TEACHER
+      if (role === "teacher" && sessionToken) {
         localStorage.setItem("teacherSessionToken", sessionToken);
       }
       // 🔁 First login password reset

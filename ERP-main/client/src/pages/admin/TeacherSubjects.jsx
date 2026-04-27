@@ -1,171 +1,132 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import api from "../../services/api";
+import { ArrowLeft, BookOpen, Save } from "lucide-react";
 
-function TeacherSubjects() {
-  const navigate = useNavigate();
+export default function TeacherSubjects() {
+  const navigate    = useNavigate();
   const { teacherId } = useParams();
-  const [teacher, setTeacher] = useState(null);
-  const [subjects, setSubjects] = useState([]);
-  const [selectedSubjects, setSelectedSubjects] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [teacher, setTeacher]           = useState(null);
+  const [subjects, setSubjects]         = useState([]);
+  const [selected, setSelected]         = useState([]);
+  const [loading, setLoading]           = useState(false);
 
   useEffect(() => {
-    const fetchData = async () => {
+    const load = async () => {
       try {
-        console.log("Fetching data for teacherId:", teacherId);
-        
-        // Get teacher info
-        const teacherRes = await api.get(`/admin/teachers/${teacherId}`);
-        console.log("Teacher response:", teacherRes.data);
-        setTeacher(teacherRes.data.teacher);
-
-        // Get all available subjects
-        const subjectsRes = await api.get('/admin/subjects');
-        console.log("Subjects response:", subjectsRes.data);
-        setSubjects(subjectsRes.data || []);
-
-        // Get teacher's current subjects
-        const teacherSubjectsRes = await api.get(`/admin/teachers/${teacherId}/subjects`);
-        console.log("Teacher subjects response:", teacherSubjectsRes.data);
-        setSelectedSubjects(teacherSubjectsRes.data.subjects?.map(s => s._id) || []);
-      } catch (error) {
-        console.error("Failed to fetch data:", error);
-        console.error("Error response:", error.response);
-        console.error("Error status:", error.response?.status);
-        console.error("Error data:", error.response?.data);
-        alert(`Failed to load data: ${error.response?.data?.message || error.message}`);
+        const [tRes, sRes, tsRes] = await Promise.all([
+          api.get(`/admin/teachers/${teacherId}`),
+          api.get("/admin/subjects"),
+          api.get(`/admin/teachers/${teacherId}/subjects`),
+        ]);
+        setTeacher(tRes.data.teacher || tRes.data);
+        setSubjects(sRes.data || []);
+        setSelected(tsRes.data.subjects?.map(s => s._id) || []);
+      } catch (err) {
+        alert(err.response?.data?.message || "Failed to load data");
       }
     };
-
-    if (teacherId) {
-      fetchData();
-    }
+    load();
   }, [teacherId]);
 
-  const handleSubjectToggle = (subjectId) => {
-    setSelectedSubjects(prev => 
-      prev.includes(subjectId) 
-        ? prev.filter(id => id !== subjectId)
-        : [...prev, subjectId]
-    );
-  };
+  const toggle = id => setSelected(prev =>
+    prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+  );
 
-  const handleSubmit = async (e) => {
+  const submit = async e => {
     e.preventDefault();
     setLoading(true);
-
     try {
-      await api.post(`/admin/teachers/${teacherId}/subjects`, {
-        subjectIds: selectedSubjects
-      });
-      alert("Subjects assigned successfully!");
+      await api.post(`/admin/teachers/${teacherId}/subjects`, { subjectIds: selected });
       navigate("/admin/teachers");
-    } catch (error) {
-      console.error("Failed to assign subjects:", error);
-      alert(error.response?.data?.message || "Failed to assign subjects");
+    } catch (err) {
+      alert(err.response?.data?.message || "Failed to assign subjects");
     } finally {
       setLoading(false);
     }
   };
 
-  if (!teacher) {
-    return (
-      <div className="max-w-4xl mx-auto p-6">
-        <div className="text-center">Loading...</div>
-      </div>
-    );
-  }
+  if (!teacher) return <div className="flex items-center justify-center h-64 text-gray-600 text-sm">Loading…</div>;
 
   return (
-    <div className="max-w-4xl mx-auto p-6">
+    <div className="space-y-5 text-gray-100 max-w-3xl">
+
       {/* HEADER */}
-      <div className="flex justify-between items-center mb-8">
-        <div>
-          <h1 className="text-3xl font-bold">Assign Subjects</h1>
-          <p className="text-gray-500 mt-1">
-            Manage subjects for: <span className="font-semibold">{teacher.name}</span>
-          </p>
-        </div>
-        <button
-          onClick={() => navigate("/admin/teachers")}
-          className="px-4 py-2 border rounded-lg hover:bg-gray-50"
-        >
-          Back to Teachers
+      <div className="flex items-center gap-3">
+        <button onClick={() => navigate("/admin/teachers")} className="p-2 rounded-xl bg-white/[0.05] border border-white/10 text-gray-400 hover:text-white hover:bg-white/10 transition">
+          <ArrowLeft size={16} />
         </button>
+        <div>
+          <h1 className="text-2xl font-bold text-white tracking-tight">Assign Subjects</h1>
+          <p className="text-sm text-gray-500 mt-0.5">{teacher.name}</p>
+        </div>
       </div>
 
-      <div className="bg-white rounded-xl shadow p-8">
-        <form onSubmit={handleSubmit}>
-          <div className="mb-6">
-            <h2 className="text-lg font-semibold mb-4">Available Subjects</h2>
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {subjects.map(subject => (
-                <label
-                  key={subject._id}
-                  className="flex items-center p-4 border rounded-lg cursor-pointer hover:bg-gray-50"
-                >
-                  <input
-                    type="checkbox"
-                    checked={selectedSubjects.includes(subject._id)}
-                    onChange={() => handleSubjectToggle(subject._id)}
-                    className="mr-3"
-                  />
-                  <div>
-                    <div className="font-medium">{subject.name}</div>
-                    <div className="text-sm text-gray-500">
-                      {subject.code} • {subject.type} • {subject.department}
-                    </div>
-                    <div className="text-xs text-gray-400">
-                      {subject.description}
-                    </div>
-                  </div>
-                </label>
-              ))}
-            </div>
-          </div>
+      <form onSubmit={submit} className="space-y-4">
 
-          {/* CURRENTLY ASSIGNED */}
-          <div className="mb-6">
-            <h3 className="text-lg font-semibold mb-4">
-              Currently Assigned ({selectedSubjects.length})
-            </h3>
+        {/* SELECTED PILLS */}
+        {selected.length > 0 && (
+          <div className="rounded-xl border border-indigo-500/20 bg-indigo-500/5 p-4">
+            <p className="text-xs text-gray-500 uppercase tracking-wider mb-2 font-medium">Assigned ({selected.length})</p>
             <div className="flex flex-wrap gap-2">
-              {selectedSubjects.map(subjectId => {
-                const subject = subjects.find(s => s._id === subjectId);
-                return subject ? (
-                  <span
-                    key={subjectId}
-                    className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm"
-                  >
-                    {subject.name}
+              {selected.map(id => {
+                const s = subjects.find(x => x._id === id);
+                return s ? (
+                  <span key={id} className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-500/20 border border-indigo-500/30 text-indigo-400 text-xs font-medium">
+                    {s.name}
+                    <button type="button" onClick={() => toggle(id)} className="text-indigo-500 hover:text-indigo-300">×</button>
                   </span>
                 ) : null;
               })}
             </div>
           </div>
+        )}
 
-          {/* ACTIONS */}
-          <div className="flex justify-end gap-4">
-            <button
-              type="button"
-              onClick={() => navigate("/admin/teachers")}
-              className="px-6 py-2 border rounded-lg hover:bg-gray-50"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={loading}
-              className="px-6 py-2 bg-black text-white rounded-lg hover:opacity-90 disabled:opacity-50"
-            >
-              {loading ? "Saving..." : "Assign Subjects"}
-            </button>
-          </div>
-        </form>
-      </div>
+        {/* SUBJECT GRID */}
+        <div className="rounded-2xl border border-white/[0.08] bg-[#161616] p-5">
+          <p className="text-xs text-gray-500 uppercase tracking-wider mb-4 font-medium">Available Subjects</p>
+          {subjects.length === 0 ? (
+            <p className="text-sm text-gray-600 text-center py-8">No subjects found</p>
+          ) : (
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {subjects.map(s => {
+                const isSelected = selected.includes(s._id);
+                return (
+                  <label
+                    key={s._id}
+                    className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition
+                      ${isSelected
+                        ? "border-indigo-500/40 bg-indigo-500/10"
+                        : "border-white/[0.07] bg-white/[0.02] hover:bg-white/[0.05]"
+                      }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => toggle(s._id)}
+                      className="mt-0.5 accent-indigo-500"
+                    />
+                    <div>
+                      <p className={`text-sm font-medium ${isSelected ? "text-indigo-300" : "text-gray-300"}`}>{s.name}</p>
+                      <p className="text-xs text-gray-600 mt-0.5">{s.code} · {s.department}</p>
+                    </div>
+                  </label>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* ACTIONS */}
+        <div className="flex justify-end gap-3">
+          <button type="button" onClick={() => navigate("/admin/teachers")} className="px-5 py-2 rounded-xl border border-white/10 text-gray-400 hover:text-white hover:bg-white/[0.06] text-sm font-medium transition">
+            Cancel
+          </button>
+          <button type="submit" disabled={loading} className="flex items-center gap-2 px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-sm font-semibold transition">
+            <Save size={14} /> {loading ? "Saving…" : "Save Subjects"}
+          </button>
+        </div>
+      </form>
     </div>
   );
 }
-
-export default TeacherSubjects;

@@ -39,36 +39,42 @@ function ClassDetails() {
   const handleViewStudent = (student) => {
     console.log("View student:", student)
     setShowMenu(null)
+    // Navigate to student profile or show modal
     alert(`Viewing student: ${student.name}`)
   }
 
   const handleEditStudent = (student) => {
     console.log("Edit student:", student)
     setShowMenu(null)
+    // Navigate to edit student page
     alert(`Editing student: ${student.name}`)
   }
 
   const handleViewAttendance = (student) => {
     console.log("View attendance:", student)
     setShowMenu(null)
+    // Navigate to attendance page
     alert(`Viewing attendance for: ${student.name}`)
   }
 
   const handleViewFees = (student) => {
     console.log("View fees:", student)
     setShowMenu(null)
+    // Navigate to fees page
     alert(`Viewing fees for: ${student.name}`)
   }
 
   const handleViewResults = (student) => {
     console.log("View results:", student)
     setShowMenu(null)
+    // Navigate to results page
     alert(`Viewing results for: ${student.name}`)
   }
 
   const handleViewDocuments = (student) => {
     console.log("View documents:", student)
     setShowMenu(null)
+    // Navigate to documents page
     alert(`Viewing documents for: ${student.name}`)
   }
 
@@ -76,6 +82,7 @@ function ClassDetails() {
     if (confirm(`Are you sure you want to expel ${student.name}?`)) {
       console.log("Expel student:", student)
       setShowMenu(null)
+      // Call API to expel student
       alert(`Expelled student: ${student.name}`)
     }
   }
@@ -98,12 +105,11 @@ function ClassDetails() {
           <button
             onClick={() =>
               navigate(`/admin/classes/${classId}/add-student`)
-            }
-            className="px-8 py-3 bg-gray-800 text-white rounded-xl hover:bg-gray-700 transition-all duration-200 font-medium border border-gray-700"
-          >
-            + Add Student
-          </button>
-        </div>
+          }
+          className="px-8 py-3 bg-gray-800 text-white rounded-xl hover:bg-gray-700 transition-all duration-200 font-medium border border-gray-700"
+        >
+          + Add Student
+        </button>
       </div>
 
       {/* STATS BAR */}

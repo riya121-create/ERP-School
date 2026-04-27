@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react"
 import api from "../../services/api"
 import AttendanceCalendar from "./AttendanceCalendar"
+import BackButton from "../../components/BackButton"
 
 const OFFLINE_KEY = "arp_attendance_draft"
 
@@ -133,12 +134,15 @@ useEffect(() => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#0B1220] to-black text-white">
+    <div className="text-white">
 
       {/* HEADER */}
       <div className="sticky top-0 z-20 bg-[#0B1220]/80 backdrop-blur border-b border-white/10 px-4 py-4 space-y-4">
         <div className="flex justify-between">
-          <h1 className="text-xl font-bold">Attendance</h1>
+          <div className="flex items-center gap-3">
+            <BackButton to="/teacher" label="Dashboard" />
+            <h1 className="text-xl font-bold">Attendance</h1>
+          </div>
           <span className={`text-xs px-3 py-1 rounded-full ${
             isOnline ? "bg-green-600/20 text-green-400" : "bg-yellow-600/20 text-yellow-400"
           }`}>

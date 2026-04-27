@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import api from "../../services/api";
+import BackButton from "../../components/BackButton";
 
 const DAYS = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
 
@@ -26,10 +27,11 @@ export default function TeacherTimetablePage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#0B1220] text-white px-10 py-12">
+    <div className="text-white">
 
       {/* ===== HEADER ===== */}
       <div className="max-w-[1600px] mx-auto mb-12">
+        <BackButton to="/teacher" label="Dashboard" />
         <h1 className="text-4xl font-extrabold tracking-tight">
           📅 My Weekly Timetable
         </h1>

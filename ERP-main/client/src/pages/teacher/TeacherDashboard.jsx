@@ -1,502 +1,277 @@
-import { useEffect, useState } from "react"
-import { useNavigate } from "react-router-dom"
-import { motion } from "framer-motion"
-import api from "../../services/api"
-import TeacherProfileDrawer from "./TeacherProfileDrawer"
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import api from "../../services/api";
+import TeacherProfileDrawer from "./TeacherProfileDrawer";
+import {
+  BookOpen, Users, CalendarCheck, Clock,
+  ClipboardList, FileText, BarChart2, Send,
+  ChevronRight, GraduationCap, CheckCircle,
+  Calendar, ArrowRight, User
+} from "lucide-react";
 
+/* =====================================================
+   HELPERS
+===================================================== */
+const DAYS = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 
-/* ================= MOTION PRESETS ================= */
-const fadeUp = {
-  hidden: { opacity: 0, y: 30 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.7, ease: "easeOut" } }
+function getDaysInMonth(year, month) {
+  return new Date(year, month + 1, 0).getDate();
+}
+function getFirstDayOfMonth(year, month) {
+  return new Date(year, month, 1).getDay();
 }
 
-const stagger = {
-  show: {
-    transition: { staggerChildren: 0.12 }
-  }
-}
-
+/* =====================================================
+   MAIN
+===================================================== */
 export default function TeacherDashboard() {
-  const navigate = useNavigate()
-
-  const [teacher, setTeacher] = useState(null)
-  const [showProfile, setShowProfile] = useState(false)
-
-  const [stats, setStats] = useState({
-    classes: 0,
-    students: 0,
-    attendanceToday: "—",
-    lastAttendanceTime: null // ✅ ADDED (safe even if backend doesn’t send)
-  })
-
-  // ⏰ REAL TIME CLOCK — ✅ ADDED
-  const [now, setNow] = useState(new Date())
+  const navigate = useNavigate();
+  const [teacher, setTeacher]       = useState(null);
+  const [showProfile, setShowProfile] = useState(false);
+  const [stats, setStats]           = useState({ classes: 0, students: 0, attendanceToday: "—" });
+  const [classes, setClasses]       = useState([]);
+  const [now, setNow]               = useState(new Date());
 
   useEffect(() => {
-    api.get("/teacher/me").then(r => setTeacher(r.data))
-    api.get("/teacher/dashboard-stats").then(r => setStats(r.data))
-  }, [])
+    api.get("/teacher/me").then(r => setTeacher(r.data)).catch(() => {});
+    api.get("/teacher/dashboard-stats").then(r => setStats(r.data)).catch(() => {});
+    api.get("/teacher/classes").then(r => setClasses(r.data || [])).catch(() => {});
+  }, []);
 
-  // ⏰ CLOCK EFFECT — ✅ ADDED
   useEffect(() => {
-    const timer = setInterval(() => {
-      setNow(new Date())
-    }, 1000)
+    const t = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(t);
+  }, []);
 
-    return () => clearInterval(timer)
-  }, [])
+  const hour = now.getHours();
+  const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+
+  const QUICK_ACTIONS = [
+    { label: "Mark Attendance", desc: "Daily student attendance",       icon: <CalendarCheck size={18} />, color: "emerald", path: "/teacher/attendance" },
+    { label: "Manage Homework", desc: "Create & assign homework",       icon: <ClipboardList size={18} />, color: "sky",     path: "/teacher/homework"   },
+    { label: "Upload Notes",    desc: "PDFs, slides & materials",       icon: <FileText size={18} />,      color: "violet",  path: "/teacher/notes"      },
+    { label: "Exam Centre",     desc: "Create & manage exams",          icon: <BookOpen size={18} />,      color: "amber",   path: "/teacher/exams"      },
+    { label: "Enter Marks",     desc: "Marks entry & evaluation",       icon: <BarChart2 size={18} />,     color: "rose",    path: "/teacher/exams"      },
+    { label: "Publish Results", desc: "Share results with students",    icon: <Send size={18} />,          color: "teal",    path: "/teacher/exams"      },
+  ];
+
+  const COLORS = {
+    emerald: { bg: "bg-emerald-500/10", text: "text-emerald-400", border: "border-emerald-500/20", hover: "hover:bg-emerald-500/15" },
+    sky:     { bg: "bg-sky-500/10",     text: "text-sky-400",     border: "border-sky-500/20",     hover: "hover:bg-sky-500/15"     },
+    violet:  { bg: "bg-violet-500/10",  text: "text-violet-400",  border: "border-violet-500/20",  hover: "hover:bg-violet-500/15"  },
+    amber:   { bg: "bg-amber-500/10",   text: "text-amber-400",   border: "border-amber-500/20",   hover: "hover:bg-amber-500/15"   },
+    rose:    { bg: "bg-rose-500/10",    text: "text-rose-400",    border: "border-rose-500/20",    hover: "hover:bg-rose-500/15"    },
+    teal:    { bg: "bg-teal-500/10",    text: "text-teal-400",    border: "border-teal-500/20",    hover: "hover:bg-teal-500/15"    },
+    indigo:  { bg: "bg-indigo-500/10",  text: "text-indigo-400",  border: "border-indigo-500/20",  hover: "hover:bg-indigo-500/15"  },
+  };
 
   return (
-    <div className="min-h-screen relative overflow-hidden text-white bg-[#0B1220]">
+    <div className="text-gray-100">
+      <div className="space-y-6">
 
-      {/* AMBIENT GLOWS */}
-      <div className="absolute -top-40 -left-40 w-[28rem] h-[28rem] bg-blue-500/20 rounded-full blur-[120px]" />
-      <div className="absolute bottom-0 right-0 w-[28rem] h-[28rem] bg-purple-500/20 rounded-full blur-[120px]" />
-
-      <div className="relative z-10 px-10 py-12 max-w-[1400px] mx-auto">
-
-        {/* ================= TOP BAR ================= */}
-        <motion.header
-          variants={fadeUp}
-          initial="hidden"
-          animate="show"
-          className="flex items-center justify-between mb-16"
-        >
+        {/* ===== HEADER ===== */}
+        <div className="flex items-start justify-between gap-4">
           <div>
-            <h1 className="text-4xl font-extrabold tracking-tight">
-              {teacher ? `Good Morning, ${teacher.name}` : "Teacher Dashboard"}
+            <p className="text-sm text-gray-500">{greeting},</p>
+            <h1 className="text-2xl font-bold text-white tracking-tight mt-0.5">
+              {teacher?.name || localStorage.getItem("name") || "Teacher"} 👋
             </h1>
-
-            <p className="text-gray-400 mt-2 text-sm">
-              Faculty Control Center · JN Public School
-            </p>
-
-            {/* DATE + TIME — ✅ ADDED */}
-            <p className="text-gray-400 mt-2 text-sm">
-              {now.toLocaleDateString("en-IN", {
-                weekday: "long",
-                day: "numeric",
-                month: "long",
-                year: "numeric"
-              })}
-              {" · "}
-              {now.toLocaleTimeString("en-IN")}
+            <p className="text-xs text-gray-600 mt-1.5 flex items-center gap-3">
+              <span>{now.toLocaleDateString("en-IN", { weekday:"long", day:"numeric", month:"long", year:"numeric" })}</span>
+              <span className="flex items-center gap-1 text-indigo-400 font-mono">
+                <Clock size={11} />
+                {now.toLocaleTimeString("en-IN", { hour:"2-digit", minute:"2-digit", second:"2-digit" })}
+              </span>
             </p>
           </div>
-
           <button
             onClick={() => setShowProfile(true)}
-            className="
-              px-6 py-2 rounded-xl text-sm
-              bg-white/10 hover:bg-white/20
-              backdrop-blur transition
-            "
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/[0.06] border border-white/10 text-gray-300 hover:text-white hover:bg-white/10 text-sm font-medium transition flex-shrink-0"
           >
-            Profile
+            <User size={14} />
+            {teacher?.name?.split(" ")[0] || "Profile"}
           </button>
-        </motion.header>
+        </div>
 
-        {/* ================= KPI STRIP ================= */}
-       
-        {/* ================= HERO KPI OVERVIEW ================= */}
- <motion.section
-  variants={fadeUp}
-  initial="hidden"
-  animate="show"
-  className="mb-20 flex justify-center"
->
-  <div
-    className="
-      relative w-full max-w-4xl
-      rounded-[2.5rem]
-      p-10
-      bg-[radial-gradient(120%_120%_at_10%_0%,rgba(56,189,248,0.12),transparent_45%),radial-gradient(120%_120%_at_90%_100%,rgba(168,85,247,0.12),transparent_45%)]
-      bg-[#0B1220]/80
-      border border-white/10
-      backdrop-blur-2xl
-      shadow-[0_30px_80px_rgba(0,0,0,0.45)]
-      overflow-hidden
-    "
-  >
-    {/* GRID OVERLAY */}
-    <div className="pointer-events-none absolute inset-0 opacity-[0.04] bg-[linear-gradient(to_right,white_1px,transparent_1px),linear-gradient(to_bottom,white_1px,transparent_1px)] bg-[size:32px_32px]" />
+        {/* ===== STATS ===== */}
+        <div className="grid grid-cols-3 gap-3">
+          <StatCard icon={<BookOpen size={16} />}      label="My Classes"  value={stats.classes}         hint="Assigned & teaching" color="indigo" onClick={() => navigate("/teacher/classes")} />
+          <StatCard icon={<Users size={16} />}         label="Students"    value={stats.students}        hint="Active enrollments"  color="sky"    onClick={() => navigate("/teacher/classes")} />
+          <StatCard icon={<CalendarCheck size={16} />} label="Attendance"  value={stats.attendanceToday} hint="Today's status"       color="emerald" onClick={() => navigate("/teacher/attendance")} />
+        </div>
 
-    {/* HEADER */}
-    <div className="relative flex items-start justify-between mb-10">
-      <div>
-        <h3 className="text-2xl font-semibold tracking-tight text-white">
-          Teaching Command Center
-        </h3>
-        <p className="text-sm text-gray-400 mt-1 max-w-md">
-          Live overview of your classes, students and attendance health
-        </p>
-      </div>
-
-      <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20">
-        <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-        <span className="text-xs text-emerald-400 font-medium">
-          Live
-        </span>
-      </div>
-    </div>
-
-    {/* KPI ROW */}
-    <div className="relative grid grid-cols-3 gap-6">
-      <AdvancedMetric
-        label="Classes"
-        value={stats.classes}
-        accent="blue"
-        hint="Assigned & teaching"
-      />
-      <AdvancedMetric
-        label="Students"
-        value={stats.students}
-        accent="green"
-        hint="Active enrollments"
-      />
-      <AdvancedMetric
-        label="Attendance"
-        value={stats.attendanceToday}
-        accent="purple"
-        small
-        hint="Today’s status"
-      />
-    </div>
-
-   {/* FOOTER CTA */}
-<div className="relative mt-10 flex items-center justify-between gap-4">
-
-  {/* LEFT: TIMETABLE */}
-  <button
-    onClick={() => navigate("/teacher/timetable")}
-    className="
-      group flex items-center gap-3
-      px-6 py-3
-      rounded-xl
-      text-sm font-medium
-      text-blue-300
-      bg-white/5
-      border border-white/10
-      hover:bg-white/10
-      transition-all
-      backdrop-blur
-    "
-  >
-    <span className="text-base">📅</span>
-    View Timetable
-    <span className="group-hover:translate-x-1 transition-transform">→</span>
-  </button>
-
-  {/* RIGHT: CLASSES */}
-  <button
-    onClick={() => navigate("/teacher/classes")}
-    className="
-      group flex items-center gap-3
-      px-6 py-3
-      rounded-xl
-      text-sm font-medium
-      text-white
-      bg-gradient-to-r from-blue-600 via-cyan-600 to-blue-600
-      bg-[length:200%_200%]
-      hover:bg-[position:100%_50%]
-      transition-all duration-500
-      shadow-[0_10px_30px_rgba(37,99,235,0.35)]
-    "
-  >
-    View Classes
-    <span className="group-hover:translate-x-1 transition-transform">→</span>
-  </button>
-
-</div>
-
-  </div>
-</motion.section>
-
-
-
-
-
-        {/* ================= ACTIONS ================= */}
-        <motion.section
-          variants={stagger}
-          initial="hidden"
-          animate="show"
-          className="mb-24"
-        >
-          <h2 className="text-xl font-semibold mb-8 tracking-wide">
-            Quick Actions
-          </h2>
-
-          <div className="grid md:grid-cols-3 gap-8">
-            <Action
-              title="Mark Attendance"
-              desc="Fast, secure daily attendance"
-              onClick={() => navigate("/teacher/attendance")}
-              gradient="from-blue-500 to-cyan-500"
-            />
-            <Action
-              title="Manage Homework"
-              desc="Create, assign & grade homework"
-              onClick={() => navigate("/teacher/homework")}
-              gradient="from-green-500 to-emerald-500"
-            />
-            <Action
-              title="Upload Notes"
-              desc="PDFs, slides & study materials"
-              onClick={() => navigate("/teacher/notes")}
-              gradient="from-purple-500 to-pink-500"
-            />
-            {/* ================= EXAM ================= */}
-  <Action
-    title="Exam Centre"
-    desc="Create, manage & publish exams"
-    onClick={() => navigate("/teacher/exams")}
-    gradient="from-orange-500 to-red-500"
-  />
-
-  {/* ================= MARKS ================= */}
-  <Action
-    title="Enter Marks"
-    desc="Marks entry & evaluation"
-    onClick={() => navigate("/teacher/marks")}
-    gradient="from-yellow-500 to-amber-500"
-  />
-
-  {/* ================= RESULT ================= */}
-  <Action
-    title="Publish Results"
-    desc="Publish results to students & parents"
-    onClick={() => navigate(`/teacher/publish-results/examId`)}
-    gradient="from-teal-500 to-cyan-500"
-  />
-          </div>
-        </motion.section>
-
-      
-
-
-
-        {/* ================= SIMPLE CALENDAR ================= */}
-        {/* ✅ ADDED — no existing UI touched */}
-        <div className="mt-12">
-          <h2 className="text-xl font-semibold mb-4">
-            Calendar
-          </h2>
-
-          <div className="grid grid-cols-7 gap-2 max-w-md">
-            {Array.from({ length: 31 }, (_, i) => i + 1).map(day => (
-              <div
-                key={day}
-                className={`py-2 rounded-lg text-center text-sm
-                  ${
-                    day === now.getDate()
-                      ? "bg-blue-600 text-white"
-                      : "bg-white/10 text-gray-400"
-                  }`}
-              >
-                {day}
+        {/* ===== MY CLASSES ===== */}
+        {classes.length > 0 && (
+          <div className="rounded-2xl border border-white/[0.08] bg-[#161616] overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-3.5 border-b border-white/[0.06]">
+              <div className="flex items-center gap-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                <GraduationCap size={13} className="text-indigo-400" /> My Classes
               </div>
-            ))}
+              <button onClick={() => navigate("/teacher/classes")}
+                className="flex items-center gap-1 text-xs text-indigo-400 hover:text-indigo-300 transition">
+                View all <ChevronRight size={13} />
+              </button>
+            </div>
+            <div className="divide-y divide-white/[0.04]">
+              {classes.slice(0, 4).map(cls => (
+                <div key={cls._id} className="flex items-center justify-between px-5 py-3.5 hover:bg-white/[0.02] transition">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-indigo-500/15 flex items-center justify-center text-xs font-bold text-indigo-400">
+                      {cls.name}
+                    </div>
+                    <div>
+                      <p className="font-medium text-white text-sm">Class {cls.name} – Section {cls.section}</p>
+                      <p className={`text-xs mt-0.5 ${cls.role === "CLASS_TEACHER" ? "text-emerald-400" : "text-amber-400"}`}>
+                        {cls.role === "CLASS_TEACHER" ? "🏅 Class Teacher" : `📘 ${cls.subject || "Subject Teacher"}`}
+                      </p>
+                    </div>
+                  </div>
+                  <button onClick={() => navigate("/teacher/classes")}
+                    className="p-1.5 rounded-lg text-gray-600 hover:text-white hover:bg-white/10 transition">
+                    <ArrowRight size={14} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ===== QUICK ACTIONS ===== */}
+        <div>
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Quick Actions</p>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {QUICK_ACTIONS.map(a => {
+              const c = COLORS[a.color];
+              return (
+                <button key={a.label} onClick={() => navigate(a.path)}
+                  className={`group flex items-start gap-3 p-4 rounded-2xl border ${c.border} ${c.bg} ${c.hover} text-left transition-all hover:scale-[1.02] hover:shadow-lg`}>
+                  <div className={`p-2 rounded-xl bg-white/[0.06] ${c.text} flex-shrink-0 group-hover:scale-110 transition-transform`}>
+                    {a.icon}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-semibold text-white text-sm">{a.label}</p>
+                    <p className="text-xs text-gray-500 mt-0.5 truncate">{a.desc}</p>
+                  </div>
+                </button>
+              );
+            })}
           </div>
         </div>
+
+        {/* ===== BOTTOM ROW: TIMETABLE + CALENDAR ===== */}
+        <div className="grid sm:grid-cols-2 gap-4">
+
+          {/* Timetable CTA */}
+          <div className="rounded-2xl border border-white/[0.08] bg-[#161616] p-5 flex flex-col justify-between">
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <Calendar size={15} className="text-indigo-400" />
+                <p className="text-sm font-semibold text-white">My Timetable</p>
+              </div>
+              <p className="text-xs text-gray-500">View your weekly teaching schedule and period timings</p>
+            </div>
+            <button onClick={() => navigate("/teacher/timetable")}
+              className="mt-4 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold transition">
+              <Calendar size={14} /> View Timetable
+            </button>
+          </div>
+
+          {/* Mini Calendar */}
+          <div className="rounded-2xl border border-white/[0.08] bg-[#161616] p-5">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-sm font-semibold text-white">
+                {now.toLocaleDateString("en-IN", { month:"long", year:"numeric" })}
+              </p>
+              <span className="text-xs text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-2 py-0.5 rounded-full">
+                {now.getDate()} {now.toLocaleDateString("en-IN", { month:"short" })}
+              </span>
+            </div>
+
+            {/* day headers */}
+            <div className="grid grid-cols-7 mb-1">
+              {DAYS.map(d => (
+                <div key={d} className="text-center text-[10px] text-gray-600 font-semibold py-1">{d}</div>
+              ))}
+            </div>
+
+            {/* date grid */}
+            <div className="grid grid-cols-7 gap-0.5">
+              {/* empty cells for first day offset */}
+              {Array.from({ length: getFirstDayOfMonth(now.getFullYear(), now.getMonth()) }).map((_, i) => (
+                <div key={`e-${i}`} />
+              ))}
+              {Array.from({ length: getDaysInMonth(now.getFullYear(), now.getMonth()) }, (_, i) => i + 1).map(day => {
+                const isToday = day === now.getDate();
+                const isWeekend = (() => {
+                  const d = new Date(now.getFullYear(), now.getMonth(), day).getDay();
+                  return d === 0 || d === 6;
+                })();
+                return (
+                  <div key={day}
+                    className={`aspect-square flex items-center justify-center rounded-lg text-xs font-medium transition
+                      ${isToday
+                        ? "bg-indigo-600 text-white font-bold"
+                        : isWeekend
+                        ? "text-gray-700"
+                        : "text-gray-400 hover:bg-white/[0.06] hover:text-white cursor-pointer"
+                      }`}>
+                    {day}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* ===== STATUS STRIP ===== */}
+        <div className="flex flex-wrap gap-3">
+          <StatusPill icon={<CheckCircle size={12} />} label="Session Active"    color="emerald" />
+          <StatusPill icon={<Clock size={12} />}       label="Attendance Open"   color="indigo"  />
+          <StatusPill icon={<BookOpen size={12} />}    label="Exams Scheduled"   color="amber"   />
+        </div>
+
       </div>
 
       {/* PROFILE DRAWER */}
-      <TeacherProfileDrawer
-        open={showProfile}
-        onClose={() => setShowProfile(false)}
-        teacher={teacher}
-      />
+      <TeacherProfileDrawer open={showProfile} onClose={() => setShowProfile(false)} teacher={teacher} />
     </div>
-  )
+  );
 }
 
-/* ================= KPI ================= */
-function KPI({ title, value, desc, color }) {
-  const map = {
-    blue: "from-blue-500/20 to-transparent text-blue-400",
-    green: "from-green-500/20 to-transparent text-green-400",
-    purple: "from-purple-500/20 to-transparent text-purple-400"
-  }
+/* =====================================================
+   SMALL COMPONENTS
+===================================================== */
+const STAT_COLORS = {
+  indigo:  { bg: "bg-indigo-500/10",  text: "text-indigo-400",  border: "border-indigo-500/20"  },
+  sky:     { bg: "bg-sky-500/10",     text: "text-sky-400",     border: "border-sky-500/20"     },
+  emerald: { bg: "bg-emerald-500/10", text: "text-emerald-400", border: "border-emerald-500/20" },
+};
 
+function StatCard({ icon, label, value, hint, color, onClick }) {
+  const c = STAT_COLORS[color];
   return (
-    <motion.div
-      variants={fadeUp}
-      className={`
-        rounded-3xl p-7
-        bg-gradient-to-br ${map[color]}
-        border border-white/10
-        backdrop-blur-xl
-        shadow-xl
-      `}
-    >
-      <p className="text-sm text-gray-400">{title}</p>
-      <p className="text-4xl font-bold mt-2">{value}</p>
-      <p className="text-sm text-gray-500 mt-1">{desc}</p>
-    </motion.div>
-  )
-}
-
-/* ================= ACTION ================= */
-function Action({ title, desc, onClick, gradient }) {
-  return (
-    <motion.div
-      variants={fadeUp}
-      whileHover={{ y: -10, scale: 1.05 }}
-      whileTap={{ scale: 0.97 }}
-      onClick={onClick}
-      className={`
-        cursor-pointer rounded-3xl p-7
-        bg-gradient-to-r ${gradient}
-        shadow-2xl
-      `}
-    >
-      <h3 className="text-lg font-semibold">{title}</h3>
-      <p className="text-sm text-white/80 mt-2">{desc}</p>
-      <p className="text-sm mt-5 font-medium">Open →</p>
-    </motion.div>
-  )
-}
-/* ================= CLASSES ================= */
-function MyClasses({ onCountChange }) {
-
-  const [classes, setClasses] = useState([])
-  const navigate = useNavigate()
-
-  useEffect(() => {
-  api.get("/teacher/classes").then(res => {
-    setClasses(res.data)
-
-    // 🔥 KPI sync fix
-    if (onCountChange) {
-      onCountChange(res.data.length)
-    }
-  })
-}, [])
-
-
-  if (!classes.length) {
-    return <p className="text-gray-400 text-sm">No classes assigned yet.</p>
-  }
-
-  return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-
-      {/* LEFT: ASSIGNED CLASS */}
-      <div className="lg:col-span-8 grid md:grid-cols-2 gap-8">
-        {classes.map(cls => (
-          <motion.div
-            key={cls._id}
-            whileHover={{ scale: 1.04 }}
-            className="
-              rounded-3xl p-6
-              bg-white/5 border border-white/10
-              backdrop-blur-xl shadow-xl
-            "
-          >
-            <h3 className="text-lg font-semibold">
-              Class {cls.name} – Section {cls.section}
-            </h3>
-
-            <p
-  className={`text-xs mt-1 font-medium ${
-    cls.role === "CLASS_TEACHER"
-      ? "text-green-400"
-      : "text-yellow-400"
-  }`}
->
-  {cls.role === "CLASS_TEACHER"
-    ? "🏅 Class Teacher"
-    : `📘 Subject Teacher (${cls.subject || "Subject"})`}
-
-</p>
-
-{cls.role === "CLASS_TEACHER" && (
-  <button
-    onClick={() => navigate(`/teacher/class/${cls.classId}`)}
-    className="mt-6 px-4 py-2 text-sm rounded-xl bg-white/10 hover:bg-white/20 transition"
-  >
-    View Class →
-  </button>
-)}
-
-          </motion.div>
-        ))}
+    <button onClick={onClick}
+      className={`group rounded-2xl border ${c.border} ${c.bg} p-4 text-left hover:scale-[1.02] hover:shadow-lg transition-all duration-200`}>
+      <div className="flex items-start justify-between mb-3">
+        <span className={c.text}>{icon}</span>
+        <ArrowRight size={13} className="text-gray-700 group-hover:text-gray-500 group-hover:translate-x-0.5 transition-all" />
       </div>
-
-      {/* RIGHT: TIMETABLE (OPTIONAL UX) */}
-      <div
-        className="
-          lg:col-span-4
-          rounded-3xl p-7
-          bg-white/5
-          border border-white/10
-          backdrop-blur-xl
-          shadow-2xl
-          flex flex-col justify-between
-        "
-      >
-        <h3 className="text-lg font-semibold text-white tracking-wide">
-          📅 My Timetable
-        </h3>
-
-        <p className="text-sm text-gray-400 mt-2">
-          View weekly teaching schedule
-        </p>
-
-        <button
-          onClick={() => navigate("/teacher/timetable")}
-          className="
-            mt-6 w-full
-            bg-blue-600 hover:bg-blue-700
-            text-white font-semibold text-sm
-            py-3 rounded-xl transition
-          "
-        >
-          View Full Timetable →
-        </button>
-      </div>
-
-    </div>
-  )
+      <p className={`text-2xl font-bold ${c.text} leading-none`}>{value}</p>
+      <p className="text-xs font-semibold text-white mt-2">{label}</p>
+      <p className="text-[11px] text-gray-600 mt-0.5">{hint}</p>
+    </button>
+  );
 }
-function AdvancedMetric({ label, value, accent, hint, small }) {
-  const accentMap = {
-    blue: "text-blue-400",
-    green: "text-emerald-400",
-    purple: "text-purple-400"
-  }
 
+function StatusPill({ icon, label, color }) {
+  const colors = {
+    emerald: "bg-emerald-500/10 border-emerald-500/20 text-emerald-400",
+    indigo:  "bg-indigo-500/10 border-indigo-500/20 text-indigo-400",
+    amber:   "bg-amber-500/10 border-amber-500/20 text-amber-400",
+  };
   return (
-    <motion.div
-      whileHover={{ y: -4 }}
-      className="
-        relative rounded-2xl p-5
-        bg-white/5
-        border border-white/10
-        backdrop-blur
-        hover:bg-white/10
-        transition-all
-      "
-    >
-      <p className="text-xs text-gray-400">{label}</p>
-
-      <p
-        className={`
-          mt-1 font-bold tracking-tight
-          ${accentMap[accent]}
-          ${small ? "text-xl" : "text-3xl"}
-        `}
-      >
-        {value}
-      </p>
-
-      {hint && (
-        <p className="text-[11px] text-gray-500 mt-1">
-          {hint}
-        </p>
-      )}
-    </motion.div>
-  )
+    <span className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-medium ${colors[color]}`}>
+      {icon} {label}
+    </span>
+  );
 }

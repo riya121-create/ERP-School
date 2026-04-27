@@ -1,281 +1,193 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import api from "../../services/api";
+import { ArrowLeft, Save, Star } from "lucide-react";
 
-function TeacherPerformance() {
-  const navigate = useNavigate();
+const CRITERIA = [
+  { name: "Teaching Skills",      description: "Classroom instruction & delivery",       weight: 1 },
+  { name: "Classroom Management", description: "Discipline & student engagement",         weight: 1 },
+  { name: "Communication",        description: "Interaction with students & parents",     weight: 1 },
+  { name: "Professionalism",      description: "Punctuality, attitude & collaboration",   weight: 1 },
+];
+
+const ratingColor = r => r >= 4.5 ? "text-emerald-400" : r >= 3.5 ? "text-blue-400" : r >= 2.5 ? "text-amber-400" : "text-red-400";
+
+function Stars({ rating }) {
+  return (
+    <div className="flex gap-0.5">
+      {[1,2,3,4,5].map(i => (
+        <Star key={i} size={12} className={i <= Math.round(rating) ? "text-amber-400 fill-amber-400" : "text-gray-700"} />
+      ))}
+    </div>
+  );
+}
+
+export default function TeacherPerformance() {
+  const navigate    = useNavigate();
   const { teacherId } = useParams();
-  const [teacher, setTeacher] = useState(null);
+  const [teacher, setTeacher]         = useState(null);
   const [performances, setPerformances] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading]         = useState(false);
 
-  const [formData, setFormData] = useState({
+  const [form, setForm] = useState({
     evaluationPeriod: "",
-    criteria: [
-      { name: "Teaching Skills", description: "Classroom instruction and delivery", weight: 1 },
-      { name: "Classroom Management", description: "Maintaining discipline and engagement", weight: 1 },
-      { name: "Communication", description: "Interaction with students and parents", weight: 1 },
-      { name: "Professionalism", description: "Punctuality, attitude, and collaboration", weight: 1 }
-    ],
+    criteria: CRITERIA,
     ratings: [],
     comments: "",
     overallRating: 3
   });
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        // Get teacher info
-        const teacherRes = await api.get(`/admin/teachers/${teacherId}`);
-        setTeacher(teacherRes.data.teacher);
+  const loadPerf = async () => {
+    const res = await api.get(`/admin/teachers/${teacherId}/performance`);
+    setPerformances(res.data.performances || []);
+  };
 
-        // Get performance history
-        const performanceRes = await api.get(`/admin/teachers/${teacherId}/performance`);
-        setPerformances(performanceRes.data.performances || []);
-      } catch (error) {
-        console.error("Failed to fetch data:", error);
-        console.error("Error response:", error.response);
-        console.error("Error status:", error.response?.status);
-        console.error("Error data:", error.response?.data);
-        alert(`Failed to load data: ${error.response?.data?.message || error.message}`);
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const tRes = await api.get(`/admin/teachers/${teacherId}`);
+        setTeacher(tRes.data.teacher || tRes.data);
+        await loadPerf();
+      } catch (err) {
+        alert(err.response?.data?.message || "Failed to load data");
       }
     };
-
-    fetchData();
+    load();
   }, [teacherId]);
 
-  const handleRatingChange = (criterionIndex, score) => {
-    setFormData(prev => ({
-      ...prev,
-      ratings: prev.ratings.filter(r => r.criterion !== prev.criteria[criterionIndex].name).concat({
-        criterion: prev.criteria[criterionIndex].name,
-        score: parseInt(score)
-      })
+  const setRating = (criterionName, score) => {
+    setForm(f => ({
+      ...f,
+      ratings: f.ratings.filter(r => r.criterion !== criterionName).concat({ criterion: criterionName, score: parseInt(score) })
     }));
   };
 
-  const handleSubmit = async (e) => {
+  const getRating = name => form.ratings.find(r => r.criterion === name)?.score || 3;
+
+  const submit = async e => {
     e.preventDefault();
     setLoading(true);
-
     try {
-      await api.post(`/admin/teachers/${teacherId}/performance`, {
-        ...formData,
-        overallRating: parseInt(formData.overallRating)
-      });
-      alert("Performance evaluation saved successfully!");
-      
-      // Reset form
-      setFormData(prev => ({
-        ...prev,
-        evaluationPeriod: "",
-        ratings: [],
-        comments: "",
-        overallRating: 3
-      }));
-
-      // Refresh performances list
-      const performanceRes = await api.get(`/admin/teachers/${teacherId}/performance`);
-      setPerformances(performanceRes.data.performances || []);
-    } catch (error) {
-      console.error("Failed to save performance:", error);
-      alert(error.response?.data?.message || "Failed to save performance evaluation");
+      await api.post(`/admin/teachers/${teacherId}/performance`, { ...form, overallRating: parseFloat(form.overallRating) });
+      setForm(f => ({ ...f, evaluationPeriod: "", ratings: [], comments: "", overallRating: 3 }));
+      await loadPerf();
+    } catch (err) {
+      alert(err.response?.data?.message || "Failed to save");
     } finally {
       setLoading(false);
     }
   };
 
-  const getRatingColor = (rating) => {
-    if (rating >= 4.5) return 'text-green-600';
-    if (rating >= 3.5) return 'text-blue-600';
-    if (rating >= 2.5) return 'text-yellow-600';
-    return 'text-red-600';
-  };
-
-  const getStars = (rating) => {
-    const stars = [];
-    for (let i = 1; i <= 5; i++) {
-      if (i <= rating) {
-        stars.push('⭐');
-      } else {
-        stars.push('☆');
-      }
-    }
-    return stars.join('');
-  };
-
-  if (!teacher) {
-    return (
-      <div className="max-w-4xl mx-auto p-6">
-        <div className="text-center">Loading...</div>
-      </div>
-    );
-  }
+  if (!teacher) return <div className="flex items-center justify-center h-64 text-gray-600 text-sm">Loading…</div>;
 
   return (
-    <div className="max-w-4xl mx-auto p-6">
+    <div className="space-y-5 text-gray-100 max-w-5xl">
+
       {/* HEADER */}
-      <div className="flex justify-between items-center mb-8">
-        <div>
-          <h1 className="text-3xl font-bold">Performance Management</h1>
-          <p className="text-gray-500 mt-1">
-            Manage performance for: <span className="font-semibold">{teacher.name}</span>
-          </p>
-        </div>
-        <button
-          onClick={() => navigate("/admin/teachers")}
-          className="px-4 py-2 border rounded-lg hover:bg-gray-50"
-        >
-          Back to Teachers
+      <div className="flex items-center gap-3">
+        <button onClick={() => navigate("/admin/teachers")} className="p-2 rounded-xl bg-white/[0.05] border border-white/10 text-gray-400 hover:text-white hover:bg-white/10 transition">
+          <ArrowLeft size={16} />
         </button>
+        <div>
+          <h1 className="text-2xl font-bold text-white tracking-tight">Performance Evaluation</h1>
+          <p className="text-sm text-gray-500 mt-0.5">{teacher.name}</p>
+        </div>
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-8">
-        {/* PERFORMANCE EVALUATION FORM */}
-        <div className="bg-white rounded-xl shadow p-8">
-          <h2 className="text-lg font-semibold mb-4">New Performance Evaluation</h2>
-          <form onSubmit={handleSubmit}>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium mb-1">Evaluation Period *</label>
-                <input
-                  type="text"
-                  value={formData.evaluationPeriod}
-                  onChange={(e) => setFormData(prev => ({ ...prev, evaluationPeriod: e.target.value }))}
-                  className="w-full border rounded-lg px-3 py-2"
-                  placeholder="e.g., Q1 2024, Academic Year 2023-24"
-                  required
-                />
-              </div>
+      <div className="grid lg:grid-cols-2 gap-4">
 
-              {/* CRITERIA RATINGS */}
-              <div className="space-y-3">
-                <h3 className="font-medium mb-2">Performance Criteria (1-5 Scale)</h3>
-                {formData.criteria.map((criterion, index) => (
-                  <div key={index} className="border rounded-lg p-3">
-                    <div className="flex justify-between items-start mb-2">
-                      <div>
-                        <div className="font-medium">{criterion.name}</div>
-                        <div className="text-sm text-gray-500">{criterion.description}</div>
-                      </div>
-                      <div className="text-sm text-gray-500">Weight: {criterion.weight}</div>
+        {/* FORM */}
+        <div className="rounded-2xl border border-white/[0.08] bg-[#161616] p-5">
+          <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">New Evaluation</h2>
+          <form onSubmit={submit} className="space-y-4">
+
+            <div>
+              <label className="text-xs text-gray-500 mb-1.5 block">Evaluation Period *</label>
+              <input value={form.evaluationPeriod} onChange={e => setForm(f => ({ ...f, evaluationPeriod: e.target.value }))} placeholder="e.g. Q1 2025, Academic Year 2024-25" required className="w-full bg-white/[0.05] border border-white/10 text-gray-200 placeholder-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500/60 transition" />
+            </div>
+
+            {/* CRITERIA */}
+            <div className="space-y-3">
+              <p className="text-xs text-gray-500 uppercase tracking-wider font-medium">Criteria (1–5)</p>
+              {CRITERIA.map(c => (
+                <div key={c.name} className="rounded-xl bg-white/[0.03] border border-white/[0.06] p-3">
+                  <div className="flex justify-between items-start mb-2">
+                    <div>
+                      <p className="text-sm font-medium text-gray-200">{c.name}</p>
+                      <p className="text-xs text-gray-600">{c.description}</p>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm">1</span>
-                      <input
-                        type="range"
-                        min="1"
-                        max="5"
-                        value={formData.ratings.find(r => r.criterion === criterion.name)?.score || 3}
-                        onChange={(e) => handleRatingChange(index, e.target.value)}
-                        className="flex-1"
-                      />
-                      <span className="text-sm">5</span>
-                      <span className="font-bold ml-2">
-                        {formData.ratings.find(r => r.criterion === criterion.name)?.score || 3}
-                      </span>
-                    </div>
+                    <span className={`text-lg font-bold ${ratingColor(getRating(c.name))}`}>{getRating(c.name)}</span>
                   </div>
-                ))}
-              </div>
-
-              {/* OVERALL RATING */}
-              <div>
-                <label className="block text-sm font-medium mb-1">Overall Rating *</label>
-                <div className="flex items-center gap-4">
                   <input
-                    type="range"
-                    min="1"
-                    max="5"
-                    step="0.1"
-                    value={formData.overallRating}
-                    onChange={(e) => setFormData(prev => ({ ...prev, overallRating: e.target.value }))}
-                    className="flex-1"
+                    type="range" min="1" max="5"
+                    value={getRating(c.name)}
+                    onChange={e => setRating(c.name, e.target.value)}
+                    className="w-full accent-indigo-500"
                   />
-                  <span className={`font-bold text-lg ${getRatingColor(formData.overallRating)}`}>
-                    {formData.overallRating} {getStars(Math.round(formData.overallRating))}
-                  </span>
+                  <div className="flex justify-between text-[10px] text-gray-700 mt-0.5">
+                    <span>Poor</span><span>Excellent</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* OVERALL */}
+            <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] p-3">
+              <div className="flex justify-between items-center mb-2">
+                <p className="text-sm font-medium text-gray-200">Overall Rating</p>
+                <div className="flex items-center gap-2">
+                  <Stars rating={form.overallRating} />
+                  <span className={`font-bold ${ratingColor(form.overallRating)}`}>{parseFloat(form.overallRating).toFixed(1)}</span>
                 </div>
               </div>
-
-              {/* COMMENTS */}
-              <div>
-                <label className="block text-sm font-medium mb-1">Comments *</label>
-                <textarea
-                  value={formData.comments}
-                  onChange={(e) => setFormData(prev => ({ ...prev, comments: e.target.value }))}
-                  className="w-full border rounded-lg px-3 py-2"
-                  rows={4}
-                  placeholder="Enter detailed feedback and observations"
-                  required
-                />
-              </div>
-
-              <div className="flex justify-end">
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="px-6 py-2 bg-black text-white rounded-lg hover:opacity-90 disabled:opacity-50"
-                >
-                  {loading ? "Saving..." : "Save Performance Evaluation"}
-                </button>
-              </div>
+              <input type="range" min="1" max="5" step="0.1" value={form.overallRating} onChange={e => setForm(f => ({ ...f, overallRating: e.target.value }))} className="w-full accent-indigo-500" />
             </div>
+
+            {/* COMMENTS */}
+            <div>
+              <label className="text-xs text-gray-500 mb-1.5 block">Feedback / Comments *</label>
+              <textarea value={form.comments} onChange={e => setForm(f => ({ ...f, comments: e.target.value }))} rows={3} required placeholder="Detailed observations…" className="w-full bg-white/[0.05] border border-white/10 text-gray-200 placeholder-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500/60 transition resize-none" />
+            </div>
+
+            <button type="submit" disabled={loading} className="w-full flex items-center justify-center gap-2 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-sm font-semibold transition">
+              <Save size={14} /> {loading ? "Saving…" : "Save Evaluation"}
+            </button>
           </form>
         </div>
 
-        {/* PERFORMANCE HISTORY */}
-        <div className="bg-white rounded-xl shadow p-8">
-          <h2 className="text-lg font-semibold mb-4">Performance History</h2>
-          <div className="space-y-4">
+        {/* HISTORY */}
+        <div className="rounded-2xl border border-white/[0.08] bg-[#161616] p-5">
+          <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">History ({performances.length})</h2>
+          <div className="space-y-3 max-h-[600px] overflow-y-auto pr-1">
             {performances.length === 0 ? (
-              <div className="text-center text-gray-500 py-8">
-                No performance evaluations found
-              </div>
+              <div className="py-12 text-center text-gray-600 text-sm">No evaluations yet</div>
             ) : (
-              performances.map(performance => (
-                <div key={performance._id} className="border rounded-lg p-4">
-                  <div className="flex justify-between items-start mb-3">
+              performances.map(p => (
+                <div key={p._id} className="rounded-xl border border-white/[0.07] bg-white/[0.02] p-4">
+                  <div className="flex items-start justify-between mb-3">
                     <div>
-                      <div className="font-medium">{performance.evaluationPeriod}</div>
-                      <div className="text-sm text-gray-500">
-                        {new Date(performance.createdAt).toLocaleDateString()}
-                      </div>
+                      <p className="font-semibold text-white text-sm">{p.evaluationPeriod}</p>
+                      <p className="text-xs text-gray-600 mt-0.5">{new Date(p.createdAt).toLocaleDateString("en-IN", { day:"numeric", month:"short", year:"numeric" })}</p>
                     </div>
-                    <div className={`text-lg font-bold ${getRatingColor(performance.overallRating)}`}>
-                      {performance.overallRating} {getStars(Math.round(performance.overallRating))}
+                    <div className="text-right">
+                      <p className={`text-xl font-bold ${ratingColor(p.overallRating)}`}>{p.overallRating}</p>
+                      <Stars rating={p.overallRating} />
                     </div>
                   </div>
 
-                  {/* DETAILED RATINGS */}
-                  {performance.ratings && performance.ratings.length > 0 && (
-                    <div className="mb-3">
-                      <h4 className="font-medium text-sm mb-2">Detailed Ratings:</h4>
-                      <div className="space-y-1">
-                        {performance.ratings.map((rating, index) => (
-                          <div key={index} className="flex justify-between text-sm">
-                            <span>{rating.criterion}:</span>
-                            <span className="font-medium">{rating.score}/5</span>
-                          </div>
-                        ))}
-                      </div>
+                  {p.ratings?.length > 0 && (
+                    <div className="space-y-1 mb-3">
+                      {p.ratings.map((r, i) => (
+                        <div key={i} className="flex justify-between text-xs">
+                          <span className="text-gray-500">{r.criterion}</span>
+                          <span className={`font-semibold ${ratingColor(r.score)}`}>{r.score}/5</span>
+                        </div>
+                      ))}
                     </div>
                   )}
 
-                  {/* COMMENTS */}
-                  {performance.comments && (
-                    <div className="text-sm">
-                      <div className="font-medium mb-1">Feedback:</div>
-                      <div className="text-gray-600">{performance.comments}</div>
-                    </div>
-                  )}
-
-                  {/* EVALUATOR */}
-                  {performance.evaluatedBy && (
-                    <div className="text-sm text-gray-500 mt-2">
-                      Evaluated by: {performance.evaluatedBy.name}
-                    </div>
-                  )}
+                  {p.comments && <p className="text-xs text-gray-500 border-t border-white/[0.05] pt-2 mt-2">{p.comments}</p>}
+                  {p.evaluatedBy && <p className="text-[11px] text-gray-700 mt-1">By: {p.evaluatedBy.name}</p>}
                 </div>
               ))
             )}
@@ -285,5 +197,3 @@ function TeacherPerformance() {
     </div>
   );
 }
-
-export default TeacherPerformance;

@@ -1,331 +1,158 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import api from "../../services/api";
+import { ArrowLeft, Plus, Trash2, Save, DollarSign } from "lucide-react";
 
-function TeacherSalary() {
-  const navigate = useNavigate();
+export default function TeacherSalary() {
+  const navigate    = useNavigate();
   const { teacherId } = useParams();
   const [teacher, setTeacher] = useState(null);
-  const [salary, setSalary] = useState(null);
+  const [salary, setSalary]   = useState(null);
   const [loading, setLoading] = useState(false);
 
-  const [formData, setFormData] = useState({
+  const [form, setForm] = useState({
     basicSalary: "",
     allowances: [],
     deductions: [],
-    effectiveDate: new Date().toISOString().split('T')[0]
+    effectiveDate: new Date().toISOString().split("T")[0]
   });
 
   useEffect(() => {
-    const fetchData = async () => {
+    const load = async () => {
       try {
-        // Get teacher info
-        const teacherRes = await api.get(`/admin/teachers/${teacherId}`);
-        setTeacher(teacherRes.data.teacher);
-
-        // Get current salary
-        const salaryRes = await api.get(`/admin/teachers/${teacherId}/salary`);
-        if (salaryRes.data.salary) {
-          setSalary(salaryRes.data.salary);
-          setFormData({
-            basicSalary: salaryRes.data.salary.basicSalary || "",
-            allowances: salaryRes.data.salary.allowances || [],
-            deductions: salaryRes.data.salary.deductions || [],
-            effectiveDate: salaryRes.data.salary.effectiveDate?.split('T')[0] || new Date().toISOString().split('T')[0]
-          });
+        const [tRes, sRes] = await Promise.all([
+          api.get(`/admin/teachers/${teacherId}`),
+          api.get(`/admin/teachers/${teacherId}/salary`),
+        ]);
+        setTeacher(tRes.data.teacher || tRes.data);
+        if (sRes.data.salary) {
+          const s = sRes.data.salary;
+          setSalary(s);
+          setForm({ basicSalary: s.basicSalary || "", allowances: s.allowances || [], deductions: s.deductions || [], effectiveDate: s.effectiveDate?.split("T")[0] || form.effectiveDate });
         }
-      } catch (error) {
-        console.error("Failed to fetch data:", error);
-        console.error("Error response:", error.response);
-        console.error("Error status:", error.response?.status);
-        console.error("Error data:", error.response?.data);
-        alert(`Failed to load data: ${error.response?.data?.message || error.message}`);
+      } catch (err) {
+        alert(err.response?.data?.message || "Failed to load data");
       }
     };
-
-    fetchData();
+    load();
   }, [teacherId]);
 
-  const addAllowance = () => {
-    setFormData(prev => ({
-      ...prev,
-      allowances: [...prev.allowances, { name: "", amount: "", type: "fixed" }]
-    }));
+  const addRow = type => setForm(f => ({ ...f, [type]: [...f[type], { name: "", amount: "", type: "fixed" }] }));
+  const removeRow = (type, i) => setForm(f => ({ ...f, [type]: f[type].filter((_, x) => x !== i) }));
+  const updateRow = (type, i, field, val) => setForm(f => ({ ...f, [type]: f[type].map((r, x) => x === i ? { ...r, [field]: val } : r) }));
+
+  const total = () => {
+    const basic = parseFloat(form.basicSalary) || 0;
+    const allow = form.allowances.reduce((s, a) => s + (parseFloat(a.amount) || 0), 0);
+    const deduct = form.deductions.reduce((s, d) => s + (parseFloat(d.amount) || 0), 0);
+    return basic + allow - deduct;
   };
 
-  const removeAllowance = (index) => {
-    setFormData(prev => ({
-      ...prev,
-      allowances: prev.allowances.filter((_, i) => i !== index)
-    }));
-  };
-
-  const updateAllowance = (index, field, value) => {
-    setFormData(prev => ({
-      ...prev,
-      allowances: prev.allowances.map((allowance, i) => 
-        i === index ? { ...allowance, [field]: value } : allowance
-      )
-    }));
-  };
-
-  const addDeduction = () => {
-    setFormData(prev => ({
-      ...prev,
-      deductions: [...prev.deductions, { name: "", amount: "", type: "fixed" }]
-    }));
-  };
-
-  const removeDeduction = (index) => {
-    setFormData(prev => ({
-      ...prev,
-      deductions: prev.deductions.filter((_, i) => i !== index)
-    }));
-  };
-
-  const updateDeduction = (index, field, value) => {
-    setFormData(prev => ({
-      ...prev,
-      deductions: prev.deductions.map((deduction, i) => 
-        i === index ? { ...deduction, [field]: value } : deduction
-      )
-    }));
-  };
-
-  const calculateTotal = () => {
-    const basic = parseFloat(formData.basicSalary) || 0;
-    const allowancesTotal = formData.allowances.reduce((sum, a) => sum + (parseFloat(a.amount) || 0), 0);
-    const deductionsTotal = formData.deductions.reduce((sum, d) => sum + (parseFloat(d.amount) || 0), 0);
-    return basic + allowancesTotal - deductionsTotal;
-  };
-
-  const handleSubmit = async (e) => {
+  const submit = async e => {
     e.preventDefault();
     setLoading(true);
-
     try {
-      await api.post(`/admin/teachers/${teacherId}/salary`, {
-        ...formData,
-        basicSalary: parseFloat(formData.basicSalary)
-      });
-      alert("Salary structure saved successfully!");
+      await api.post(`/admin/teachers/${teacherId}/salary`, { ...form, basicSalary: parseFloat(form.basicSalary) });
       navigate("/admin/teachers");
-    } catch (error) {
-      console.error("Failed to save salary:", error);
-      alert(error.response?.data?.message || "Failed to save salary");
+    } catch (err) {
+      alert(err.response?.data?.message || "Failed to save salary");
     } finally {
       setLoading(false);
     }
   };
 
-  if (!teacher) {
-    return (
-      <div className="max-w-4xl mx-auto p-6">
-        <div className="text-center">Loading...</div>
-      </div>
-    );
-  }
+  if (!teacher) return <div className="flex items-center justify-center h-64 text-gray-600 text-sm">Loading…</div>;
 
   return (
-    <div className="max-w-4xl mx-auto p-6">
+    <div className="space-y-5 text-gray-100 max-w-3xl">
+
       {/* HEADER */}
-      <div className="flex justify-between items-center mb-8">
-        <div>
-          <h1 className="text-3xl font-bold">Salary Management</h1>
-          <p className="text-gray-500 mt-1">
-            Manage salary for: <span className="font-semibold">{teacher.name}</span>
-          </p>
-        </div>
-        <button
-          onClick={() => navigate("/admin/teachers")}
-          className="px-4 py-2 border rounded-lg hover:bg-gray-50"
-        >
-          Back to Teachers
+      <div className="flex items-center gap-3">
+        <button onClick={() => navigate("/admin/teachers")} className="p-2 rounded-xl bg-white/[0.05] border border-white/10 text-gray-400 hover:text-white hover:bg-white/10 transition">
+          <ArrowLeft size={16} />
         </button>
+        <div>
+          <h1 className="text-2xl font-bold text-white tracking-tight">Salary Management</h1>
+          <p className="text-sm text-gray-500 mt-0.5">{teacher.name}</p>
+        </div>
       </div>
 
-      {/* CURRENT SALARY */}
+      {/* CURRENT SALARY STRIP */}
       {salary && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-          <h3 className="font-semibold text-blue-800 mb-2">Current Salary Structure</h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-            <div>
-              <span className="text-gray-600">Basic:</span>
-              <span className="font-medium ml-2">₹{salary.basicSalary}</span>
-            </div>
-            <div>
-              <span className="text-gray-600">Allowances:</span>
-              <span className="font-medium ml-2">₹{salary.allowances?.reduce((sum, a) => sum + a.amount, 0)}</span>
-            </div>
-            <div>
-              <span className="text-gray-600">Deductions:</span>
-              <span className="font-medium ml-2">₹{salary.deductions?.reduce((sum, d) => sum + d.amount, 0)}</span>
-            </div>
-            <div>
-              <span className="text-gray-600">Total:</span>
-              <span className="font-bold ml-2">₹{salary.totalSalary}</span>
-            </div>
-          </div>
+        <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4 flex flex-wrap gap-6 text-sm">
+          <div><p className="text-xs text-gray-600 mb-0.5">Basic</p><p className="font-semibold text-white">₹{salary.basicSalary}</p></div>
+          <div><p className="text-xs text-gray-600 mb-0.5">Allowances</p><p className="font-semibold text-emerald-400">+₹{salary.allowances?.reduce((s, a) => s + a.amount, 0) || 0}</p></div>
+          <div><p className="text-xs text-gray-600 mb-0.5">Deductions</p><p className="font-semibold text-red-400">-₹{salary.deductions?.reduce((s, d) => s + d.amount, 0) || 0}</p></div>
+          <div><p className="text-xs text-gray-600 mb-0.5">Net</p><p className="font-bold text-white text-base">₹{salary.totalSalary}</p></div>
         </div>
       )}
 
-      <div className="bg-white rounded-xl shadow p-8">
-        <form onSubmit={handleSubmit}>
-          {/* BASIC SALARY */}
-          <div className="mb-8">
-            <h2 className="text-lg font-semibold mb-4">Basic Salary</h2>
-            <div className="grid md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-1">Basic Salary *</label>
-                <input
-                  type="number"
-                  value={formData.basicSalary}
-                  onChange={(e) => setFormData(prev => ({ ...prev, basicSalary: e.target.value }))}
-                  className="w-full border rounded-lg px-3 py-2"
-                  placeholder="Enter basic salary"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">Effective Date *</label>
-                <input
-                  type="date"
-                  value={formData.effectiveDate}
-                  onChange={(e) => setFormData(prev => ({ ...prev, effectiveDate: e.target.value }))}
-                  className="w-full border rounded-lg px-3 py-2"
-                  required
-                />
-              </div>
+      <form onSubmit={submit} className="space-y-4">
+        <div className="rounded-2xl border border-white/[0.08] bg-[#161616] p-5 space-y-5">
+
+          {/* BASIC */}
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div>
+              <label className="text-xs text-gray-500 mb-1.5 block font-medium">Basic Salary *</label>
+              <input type="number" value={form.basicSalary} onChange={e => setForm(f => ({ ...f, basicSalary: e.target.value }))} placeholder="₹ Amount" required className="w-full bg-white/[0.05] border border-white/10 text-gray-200 placeholder-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500/60 transition" />
+            </div>
+            <div>
+              <label className="text-xs text-gray-500 mb-1.5 block font-medium">Effective Date *</label>
+              <input type="date" value={form.effectiveDate} onChange={e => setForm(f => ({ ...f, effectiveDate: e.target.value }))} required className="w-full bg-white/[0.05] border border-white/10 text-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500/60 transition" />
             </div>
           </div>
 
           {/* ALLOWANCES */}
-          <div className="mb-8">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-semibold">Allowances</h2>
-              <button
-                type="button"
-                onClick={addAllowance}
-                className="px-4 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200"
-              >
-                + Add Allowance
-              </button>
-            </div>
-            <div className="space-y-3">
-              {formData.allowances.map((allowance, index) => (
-                <div key={index} className="grid md:grid-cols-4 gap-4">
-                  <input
-                    type="text"
-                    value={allowance.name}
-                    onChange={(e) => updateAllowance(index, 'name', e.target.value)}
-                    className="border rounded-lg px-3 py-2"
-                    placeholder="Allowance name"
-                  />
-                  <input
-                    type="number"
-                    value={allowance.amount}
-                    onChange={(e) => updateAllowance(index, 'amount', e.target.value)}
-                    className="border rounded-lg px-3 py-2"
-                    placeholder="Amount"
-                  />
-                  <select
-                    value={allowance.type}
-                    onChange={(e) => updateAllowance(index, 'type', e.target.value)}
-                    className="border rounded-lg px-3 py-2"
-                  >
-                    <option value="fixed">Fixed</option>
-                    <option value="percentage">Percentage</option>
-                  </select>
-                  <button
-                    type="button"
-                    onClick={() => removeAllowance(index)}
-                    className="px-3 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200"
-                  >
-                    Remove
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
+          <SalarySection title="Allowances" color="emerald" rows={form.allowances} onAdd={() => addRow("allowances")} onRemove={i => removeRow("allowances", i)} onUpdate={(i, f, v) => updateRow("allowances", i, f, v)} />
 
           {/* DEDUCTIONS */}
-          <div className="mb-8">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-semibold">Deductions</h2>
-              <button
-                type="button"
-                onClick={addDeduction}
-                className="px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200"
-              >
-                + Add Deduction
-              </button>
-            </div>
-            <div className="space-y-3">
-              {formData.deductions.map((deduction, index) => (
-                <div key={index} className="grid md:grid-cols-4 gap-4">
-                  <input
-                    type="text"
-                    value={deduction.name}
-                    onChange={(e) => updateDeduction(index, 'name', e.target.value)}
-                    className="border rounded-lg px-3 py-2"
-                    placeholder="Deduction name"
-                  />
-                  <input
-                    type="number"
-                    value={deduction.amount}
-                    onChange={(e) => updateDeduction(index, 'amount', e.target.value)}
-                    className="border rounded-lg px-3 py-2"
-                    placeholder="Amount"
-                  />
-                  <select
-                    value={deduction.type}
-                    onChange={(e) => updateDeduction(index, 'type', e.target.value)}
-                    className="border rounded-lg px-3 py-2"
-                  >
-                    <option value="fixed">Fixed</option>
-                    <option value="percentage">Percentage</option>
-                  </select>
-                  <button
-                    type="button"
-                    onClick={() => removeDeduction(index)}
-                    className="px-3 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200"
-                  >
-                    Remove
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
+          <SalarySection title="Deductions" color="red" rows={form.deductions} onAdd={() => addRow("deductions")} onRemove={i => removeRow("deductions", i)} onUpdate={(i, f, v) => updateRow("deductions", i, f, v)} />
 
           {/* TOTAL */}
-          <div className="bg-gray-50 rounded-lg p-4 mb-8">
-            <div className="flex justify-between items-center">
-              <span className="text-lg font-semibold">Total Monthly Salary:</span>
-              <span className="text-2xl font-bold text-green-600">₹{calculateTotal()}</span>
-            </div>
+          <div className="flex items-center justify-between rounded-xl bg-white/[0.04] border border-white/[0.07] px-4 py-3">
+            <span className="text-sm text-gray-400 font-medium">Total Monthly Salary</span>
+            <span className="text-xl font-bold text-white">₹{total().toLocaleString("en-IN")}</span>
           </div>
+        </div>
 
-          {/* ACTIONS */}
-          <div className="flex justify-end gap-4">
-            <button
-              type="button"
-              onClick={() => navigate("/admin/teachers")}
-              className="px-6 py-2 border rounded-lg hover:bg-gray-50"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={loading}
-              className="px-6 py-2 bg-black text-white rounded-lg hover:opacity-90 disabled:opacity-50"
-            >
-              {loading ? "Saving..." : "Save Salary Structure"}
-            </button>
-          </div>
-        </form>
-      </div>
+        <div className="flex justify-end gap-3">
+          <button type="button" onClick={() => navigate("/admin/teachers")} className="px-5 py-2 rounded-xl border border-white/10 text-gray-400 hover:text-white hover:bg-white/[0.06] text-sm font-medium transition">Cancel</button>
+          <button type="submit" disabled={loading} className="flex items-center gap-2 px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-sm font-semibold transition">
+            <Save size={14} /> {loading ? "Saving…" : "Save Salary"}
+          </button>
+        </div>
+      </form>
     </div>
   );
 }
 
-export default TeacherSalary;
+function SalarySection({ title, color, rows, onAdd, onRemove, onUpdate }) {
+  const addColor = color === "emerald" ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20" : "bg-red-500/10 border-red-500/20 text-red-400 hover:bg-red-500/20";
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-xs text-gray-500 uppercase tracking-wider font-medium">{title}</p>
+        <button type="button" onClick={onAdd} className={`flex items-center gap-1.5 px-3 py-1 rounded-lg border text-xs font-medium transition ${addColor}`}>
+          <Plus size={12} /> Add
+        </button>
+      </div>
+      {rows.length === 0 ? (
+        <p className="text-xs text-gray-700 py-2">No {title.toLowerCase()} added</p>
+      ) : (
+        <div className="space-y-2">
+          {rows.map((r, i) => (
+            <div key={i} className="grid grid-cols-[1fr_1fr_auto_auto] gap-2 items-center">
+              <input value={r.name} onChange={e => onUpdate(i, "name", e.target.value)} placeholder="Name" className="bg-white/[0.05] border border-white/10 text-gray-200 placeholder-gray-600 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-indigo-500/60 transition" />
+              <input type="number" value={r.amount} onChange={e => onUpdate(i, "amount", e.target.value)} placeholder="Amount" className="bg-white/[0.05] border border-white/10 text-gray-200 placeholder-gray-600 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-indigo-500/60 transition" />
+              <select value={r.type} onChange={e => onUpdate(i, "type", e.target.value)} className="bg-white/[0.05] border border-white/10 text-gray-300 rounded-lg px-2 py-1.5 text-xs focus:outline-none transition">
+                <option value="fixed" className="bg-[#1a1a1a]">Fixed</option>
+                <option value="percentage" className="bg-[#1a1a1a]">%</option>
+              </select>
+              <button type="button" onClick={() => onRemove(i)} className="p-1.5 rounded-lg text-gray-600 hover:text-red-400 hover:bg-red-500/10 transition"><Trash2 size={13} /></button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}

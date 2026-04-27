@@ -1,253 +1,156 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import api from "../../services/api";
+import { ArrowLeft, Plus, CheckCircle, XCircle, Clock } from "lucide-react";
 
-function TeacherLeave() {
-  const navigate = useNavigate();
+const LEAVE_TYPES = ["sick","casual","earned","maternity","paternity","unpaid"];
+
+const STATUS_STYLE = {
+  approved: "bg-emerald-500/15 text-emerald-400 border-emerald-500/25",
+  rejected: "bg-red-500/15 text-red-400 border-red-500/25",
+  cancelled:"bg-gray-500/15 text-gray-400 border-gray-500/25",
+  pending:  "bg-amber-500/15 text-amber-400 border-amber-500/25",
+};
+const LEAVE_STYLE = {
+  sick:      "bg-red-500/10 text-red-400",
+  casual:    "bg-emerald-500/10 text-emerald-400",
+  earned:    "bg-purple-500/10 text-purple-400",
+  maternity: "bg-pink-500/10 text-pink-400",
+  paternity: "bg-blue-500/10 text-blue-400",
+  unpaid:    "bg-gray-500/10 text-gray-400",
+};
+
+export default function TeacherLeave() {
+  const navigate    = useNavigate();
   const { teacherId } = useParams();
   const [teacher, setTeacher] = useState(null);
-  const [leaves, setLeaves] = useState([]);
+  const [leaves, setLeaves]   = useState([]);
   const [loading, setLoading] = useState(false);
 
-  const [formData, setFormData] = useState({
-    leaveType: "casual",
-    startDate: "",
-    endDate: "",
-    reason: ""
-  });
+  const [form, setForm] = useState({ leaveType: "casual", startDate: "", endDate: "", reason: "" });
+
+  const loadLeaves = async () => {
+    const res = await api.get(`/admin/teachers/${teacherId}/leave`);
+    setLeaves(res.data.leaves || []);
+  };
 
   useEffect(() => {
-    const fetchData = async () => {
+    const load = async () => {
       try {
-        // Get teacher info
-        const teacherRes = await api.get(`/admin/teachers/${teacherId}`);
-        setTeacher(teacherRes.data.teacher);
-
-        // Get leave history
-        const leavesRes = await api.get(`/admin/teachers/${teacherId}/leave`);
-        setLeaves(leavesRes.data.leaves || []);
-      } catch (error) {
-        console.error("Failed to fetch data:", error);
-        console.error("Error response:", error.response);
-        console.error("Error status:", error.response?.status);
-        console.error("Error data:", error.response?.data);
-        alert(`Failed to load data: ${error.response?.data?.message || error.message}`);
+        const tRes = await api.get(`/admin/teachers/${teacherId}`);
+        setTeacher(tRes.data.teacher || tRes.data);
+        await loadLeaves();
+      } catch (err) {
+        alert(err.response?.data?.message || "Failed to load data");
       }
     };
-
-    fetchData();
+    load();
   }, [teacherId]);
 
-  const handleSubmit = async (e) => {
+  const submit = async e => {
     e.preventDefault();
     setLoading(true);
-
     try {
-      await api.post(`/admin/teachers/${teacherId}/leave`, formData);
-      alert("Leave request submitted successfully!");
-      
-      // Reset form
-      setFormData({
-        leaveType: "casual",
-        startDate: "",
-        endDate: "",
-        reason: ""
-      });
-
-      // Refresh leaves list
-      const leavesRes = await api.get(`/admin/teachers/${teacherId}/leave`);
-      setLeaves(leavesRes.data.leaves || []);
-    } catch (error) {
-      console.error("Failed to submit leave:", error);
-      alert(error.response?.data?.message || "Failed to submit leave request");
+      await api.post(`/admin/teachers/${teacherId}/leave`, form);
+      setForm({ leaveType: "casual", startDate: "", endDate: "", reason: "" });
+      await loadLeaves();
+    } catch (err) {
+      alert(err.response?.data?.message || "Failed to submit leave");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleApproveLeave = async (leaveId, status) => {
-    const comments = prompt(`Enter comments for ${status}:`);
+  const approve = async (leaveId, status) => {
+    const comments = prompt(`Comments for ${status}:`);
     if (!comments) return;
-
     try {
       await api.post(`/admin/leave/${leaveId}/approve`, { status, comments });
-      alert(`Leave ${status} successfully!`);
-      
-      // Refresh leaves list
-      const leavesRes = await api.get(`/admin/teachers/${teacherId}/leave`);
-      setLeaves(leavesRes.data.leaves || []);
-    } catch (error) {
-      console.error("Failed to approve leave:", error);
-      alert(error.response?.data?.message || "Failed to approve leave");
+      await loadLeaves();
+    } catch (err) {
+      alert(err.response?.data?.message || "Failed");
     }
   };
 
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'approved': return 'bg-green-100 text-green-700';
-      case 'rejected': return 'bg-red-100 text-red-700';
-      case 'cancelled': return 'bg-gray-100 text-gray-700';
-      default: return 'bg-yellow-100 text-yellow-700';
-    }
-  };
-
-  const getLeaveTypeColor = (type) => {
-    switch (type) {
-      case 'sick': return 'bg-red-50 text-red-600';
-      case 'maternity': return 'bg-pink-50 text-pink-600';
-      case 'paternity': return 'bg-blue-50 text-blue-600';
-      case 'earned': return 'bg-purple-50 text-purple-600';
-      case 'unpaid': return 'bg-gray-50 text-gray-600';
-      default: return 'bg-green-50 text-green-600';
-    }
-  };
-
-  if (!teacher) {
-    return (
-      <div className="max-w-4xl mx-auto p-6">
-        <div className="text-center">Loading...</div>
-      </div>
-    );
-  }
+  if (!teacher) return <div className="flex items-center justify-center h-64 text-gray-600 text-sm">Loading…</div>;
 
   return (
-    <div className="max-w-4xl mx-auto p-6">
+    <div className="space-y-5 text-gray-100 max-w-5xl">
+
       {/* HEADER */}
-      <div className="flex justify-between items-center mb-8">
-        <div>
-          <h1 className="text-3xl font-bold">Leave Management</h1>
-          <p className="text-gray-500 mt-1">
-            Manage leaves for: <span className="font-semibold">{teacher.name}</span>
-          </p>
-        </div>
-        <button
-          onClick={() => navigate("/admin/teachers")}
-          className="px-4 py-2 border rounded-lg hover:bg-gray-50"
-        >
-          Back to Teachers
+      <div className="flex items-center gap-3">
+        <button onClick={() => navigate("/admin/teachers")} className="p-2 rounded-xl bg-white/[0.05] border border-white/10 text-gray-400 hover:text-white hover:bg-white/10 transition">
+          <ArrowLeft size={16} />
         </button>
+        <div>
+          <h1 className="text-2xl font-bold text-white tracking-tight">Leave Management</h1>
+          <p className="text-sm text-gray-500 mt-0.5">{teacher.name}</p>
+        </div>
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-8">
-        {/* LEAVE REQUEST FORM */}
-        <div className="bg-white rounded-xl shadow p-8">
-          <h2 className="text-lg font-semibold mb-4">Request Leave</h2>
-          <form onSubmit={handleSubmit}>
-            <div className="space-y-4">
+      <div className="grid lg:grid-cols-2 gap-4">
+
+        {/* REQUEST FORM */}
+        <div className="rounded-2xl border border-white/[0.08] bg-[#161616] p-5">
+          <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">Request Leave</h2>
+          <form onSubmit={submit} className="space-y-3">
+            <div>
+              <label className="text-xs text-gray-500 mb-1.5 block">Leave Type</label>
+              <select value={form.leaveType} onChange={e => setForm(f => ({ ...f, leaveType: e.target.value }))} className="w-full bg-white/[0.05] border border-white/10 text-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500/60 transition">
+                {LEAVE_TYPES.map(t => <option key={t} value={t} className="bg-[#1a1a1a] capitalize">{t.charAt(0).toUpperCase() + t.slice(1)} Leave</option>)}
+              </select>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-sm font-medium mb-1">Leave Type</label>
-                <select
-                  value={formData.leaveType}
-                  onChange={(e) => setFormData(prev => ({ ...prev, leaveType: e.target.value }))}
-                  className="w-full border rounded-lg px-3 py-2"
-                >
-                  <option value="sick">Sick Leave</option>
-                  <option value="casual">Casual Leave</option>
-                  <option value="earned">Earned Leave</option>
-                  <option value="maternity">Maternity Leave</option>
-                  <option value="paternity">Paternity Leave</option>
-                  <option value="unpaid">Unpaid Leave</option>
-                </select>
+                <label className="text-xs text-gray-500 mb-1.5 block">Start Date *</label>
+                <input type="date" value={form.startDate} onChange={e => setForm(f => ({ ...f, startDate: e.target.value }))} required className="w-full bg-white/[0.05] border border-white/10 text-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500/60 transition" />
               </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium mb-1">Start Date *</label>
-                  <input
-                    type="date"
-                    value={formData.startDate}
-                    onChange={(e) => setFormData(prev => ({ ...prev, startDate: e.target.value }))}
-                    className="w-full border rounded-lg px-3 py-2"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">End Date *</label>
-                  <input
-                    type="date"
-                    value={formData.endDate}
-                    onChange={(e) => setFormData(prev => ({ ...prev, endDate: e.target.value }))}
-                    className="w-full border rounded-lg px-3 py-2"
-                    required
-                  />
-                </div>
-              </div>
-
               <div>
-                <label className="block text-sm font-medium mb-1">Reason *</label>
-                <textarea
-                  value={formData.reason}
-                  onChange={(e) => setFormData(prev => ({ ...prev, reason: e.target.value }))}
-                  className="w-full border rounded-lg px-3 py-2"
-                  rows={4}
-                  placeholder="Enter reason for leave"
-                  required
-                />
-              </div>
-
-              <div className="flex justify-end">
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="px-6 py-2 bg-black text-white rounded-lg hover:opacity-90 disabled:opacity-50"
-                >
-                  {loading ? "Submitting..." : "Submit Leave Request"}
-                </button>
+                <label className="text-xs text-gray-500 mb-1.5 block">End Date *</label>
+                <input type="date" value={form.endDate} onChange={e => setForm(f => ({ ...f, endDate: e.target.value }))} required className="w-full bg-white/[0.05] border border-white/10 text-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500/60 transition" />
               </div>
             </div>
+            <div>
+              <label className="text-xs text-gray-500 mb-1.5 block">Reason *</label>
+              <textarea value={form.reason} onChange={e => setForm(f => ({ ...f, reason: e.target.value }))} rows={3} required placeholder="Enter reason…" className="w-full bg-white/[0.05] border border-white/10 text-gray-200 placeholder-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500/60 transition resize-none" />
+            </div>
+            <button type="submit" disabled={loading} className="w-full flex items-center justify-center gap-2 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-sm font-semibold transition">
+              <Plus size={14} /> {loading ? "Submitting…" : "Submit Request"}
+            </button>
           </form>
         </div>
 
         {/* LEAVE HISTORY */}
-        <div className="bg-white rounded-xl shadow p-8">
-          <h2 className="text-lg font-semibold mb-4">Leave History</h2>
-          <div className="space-y-3">
+        <div className="rounded-2xl border border-white/[0.08] bg-[#161616] p-5">
+          <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">Leave History ({leaves.length})</h2>
+          <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1">
             {leaves.length === 0 ? (
-              <div className="text-center text-gray-500 py-8">
-                No leave requests found
-              </div>
+              <div className="py-12 text-center text-gray-600 text-sm">No leave requests</div>
             ) : (
-              leaves.map(leave => (
-                <div key={leave._id} className="border rounded-lg p-4">
-                  <div className="flex justify-between items-start mb-2">
-                    <div>
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getLeaveTypeColor(leave.leaveType)}`}>
-                        {leave.leaveType.toUpperCase()}
+              leaves.map(l => (
+                <div key={l._id} className="rounded-xl border border-white/[0.07] bg-white/[0.02] p-4">
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <div className="flex gap-2 flex-wrap">
+                      <span className={`px-2 py-0.5 rounded-full text-[11px] font-semibold ${LEAVE_STYLE[l.leaveType] || "bg-gray-500/10 text-gray-400"}`}>
+                        {l.leaveType?.toUpperCase()}
                       </span>
-                      <span className={`ml-2 px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(leave.status)}`}>
-                        {leave.status.toUpperCase()}
+                      <span className={`px-2 py-0.5 rounded-full text-[11px] font-semibold border ${STATUS_STYLE[l.status] || STATUS_STYLE.pending}`}>
+                        {l.status?.toUpperCase()}
                       </span>
                     </div>
-                    <div className="text-sm text-gray-500">
-                      {new Date(leave.startDate).toLocaleDateString()} - {new Date(leave.endDate).toLocaleDateString()}
-                    </div>
+                    <span className="text-xs text-gray-600 flex-shrink-0">
+                      {new Date(l.startDate).toLocaleDateString("en-IN", { day:"numeric", month:"short" })} – {new Date(l.endDate).toLocaleDateString("en-IN", { day:"numeric", month:"short" })}
+                    </span>
                   </div>
-                  <div className="text-sm">
-                    <p className="font-medium mb-1">Reason: {leave.reason}</p>
-                    {leave.comments && (
-                      <p className="text-gray-600">
-                        <strong>Comments:</strong> {leave.comments}
-                      </p>
-                    )}
-                    {leave.approvedBy && (
-                      <p className="text-gray-600">
-                        <strong>Approved by:</strong> {leave.approvedBy.name}
-                      </p>
-                    )}
-                  </div>
-                  {leave.status === 'pending' && (
+                  <p className="text-sm text-gray-400">{l.reason}</p>
+                  {l.comments && <p className="text-xs text-gray-600 mt-1">Comment: {l.comments}</p>}
+                  {l.status === "pending" && (
                     <div className="flex gap-2 mt-3">
-                      <button
-                        onClick={() => handleApproveLeave(leave._id, 'approved')}
-                        className="px-3 py-1 bg-green-100 text-green-700 rounded text-sm hover:bg-green-200"
-                      >
-                        Approve
+                      <button onClick={() => approve(l._id, "approved")} className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-medium hover:bg-emerald-500/20 transition">
+                        <CheckCircle size={12} /> Approve
                       </button>
-                      <button
-                        onClick={() => handleApproveLeave(leave._id, 'rejected')}
-                        className="px-3 py-1 bg-red-100 text-red-700 rounded text-sm hover:bg-red-200"
-                      >
-                        Reject
+                      <button onClick={() => approve(l._id, "rejected")} className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-medium hover:bg-red-500/20 transition">
+                        <XCircle size={12} /> Reject
                       </button>
                     </div>
                   )}
@@ -260,5 +163,3 @@ function TeacherLeave() {
     </div>
   );
 }
-
-export default TeacherLeave;

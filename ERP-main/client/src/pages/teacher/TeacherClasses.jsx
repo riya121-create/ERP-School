@@ -2,6 +2,7 @@ import { useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { motion } from "framer-motion"
 import api from "../../services/api"
+import BackButton from "../../components/BackButton"
 
 const fadeUp = {
   hidden: { opacity: 0, y: 20 },
@@ -22,7 +23,7 @@ export default function TeacherClasses() {
   )
 
   return (
-    <div className="min-h-screen bg-[#0B1220] text-white px-10 py-10">
+    <div className="text-white px-0 py-0">
       {/* HEADER */}
       <motion.div
         variants={fadeUp}
@@ -30,6 +31,7 @@ export default function TeacherClasses() {
         animate="show"
         className="mb-10"
       >
+        <BackButton to="/teacher" label="Dashboard" />
         <h1 className="text-3xl font-bold tracking-tight">
           My Classes
         </h1>

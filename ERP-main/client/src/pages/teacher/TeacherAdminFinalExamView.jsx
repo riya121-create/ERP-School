@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import api from "../../services/api";
+import BackButton from "../../components/BackButton";
 
 /* ================= ANIMATION ================= */
 const fade = {
@@ -44,16 +45,11 @@ export default function TeacherAdminFinalExamView() {
 
   /* ================= UI ================= */
   return (
-    <div className="min-h-screen px-10 py-10 bg-[#0B1220] text-white">
+    <div className="text-white">
 
       {/* ================= HEADER ================= */}
       <motion.div variants={fade} initial="hidden" animate="show">
-        <button
-          onClick={() => navigate(-1)}
-          className="text-sm text-gray-400 hover:text-white mb-6"
-        >
-          ← Back to Final Exams
-        </button>
+        <BackButton to="/teacher/exams/list" label="My Exams" />
 
         <div className="flex items-start justify-between">
           <div>

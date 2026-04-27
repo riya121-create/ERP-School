@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams, useSearchParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import api from "../../services/api";
+import BackButton from "../../components/BackButton";
 
 /* ================= ANIMATION ================= */
 const fadeUp = {
@@ -118,15 +119,10 @@ export default function TeacherFinalExamMarks() {
 
   /* ================= UI ================= */
   return (
-    <div className="min-h-screen bg-[#0B1220] text-white px-10 py-10">
+    <div className="text-white">
       {/* ================= HEADER ================= */}
       <motion.div variants={fadeUp} initial="hidden" animate="show">
-        <button
-          onClick={() => navigate(-1)}
-          className="text-sm text-slate-400 hover:text-white mb-6"
-        >
-          ← Back
-        </button>
+        <BackButton to="/teacher/exams/list" label="My Exams" />
 
         <h1 className="text-3xl font-semibold tracking-tight">
           Final Exam – Marks Entry

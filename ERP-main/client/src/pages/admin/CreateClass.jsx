@@ -1,14 +1,12 @@
 import { useState } from "react";
 import api from "../../services/api";
+import { Plus, CheckCircle, AlertCircle } from "lucide-react";
 
-/* =====================================================
-   CREATE CLASS — PRODUCTION / FAANG INTERNAL
-===================================================== */
 export default function CreateClass() {
-  const [name, setName] = useState("");
+  const [name, setName]       = useState("");
   const [section, setSection] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError]     = useState("");
   const [success, setSuccess] = useState(false);
 
   const handleCreate = async () => {
@@ -16,113 +14,48 @@ export default function CreateClass() {
       setError("Class name and section are required");
       return;
     }
-
     try {
-      setLoading(true);
-      setError("");
-      setSuccess(false);
-
-      await api.post("/admin/classes", {
-        name: name.trim(),
-        section: section.trim().toUpperCase()
-      });
-
-      setName("");
-      setSection("");
-      setSuccess(true);
-
-      // auto-hide success
+      setLoading(true); setError(""); setSuccess(false);
+      await api.post("/admin/classes", { name: name.trim(), section: section.trim().toUpperCase() });
+      setName(""); setSection(""); setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
     } catch (err) {
-      setError(
-        err.response?.data?.message ||
-          "Unable to create class. Try again."
-      );
+      setError(err.response?.data?.message || "Unable to create class. Try again.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="space-y-5">
-
-      {/* HEADER */}
-      <div>
-        <h3 className="text-base font-semibold">
-          Create Class
-        </h3>
-        <p className="text-sm text-gray-500">
-          Define a new academic class & section
-        </p>
+    <div className="space-y-3">
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="block text-xs text-gray-500 mb-1.5 font-medium">Class *</label>
+          <input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. 10"
+            className="w-full bg-white/[0.05] border border-white/10 text-gray-200 placeholder-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500/60 transition" />
+        </div>
+        <div>
+          <label className="block text-xs text-gray-500 mb-1.5 font-medium">Section *</label>
+          <input value={section} onChange={e => setSection(e.target.value)} placeholder="e.g. A"
+            className="w-full bg-white/[0.05] border border-white/10 text-gray-200 placeholder-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500/60 transition" />
+        </div>
       </div>
 
-      {/* FORM */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <Input
-          label="Class"
-          placeholder="e.g. 10"
-          value={name}
-          onChange={setName}
-        />
-
-        <Input
-          label="Section"
-          placeholder="e.g. A"
-          value={section}
-          onChange={setSection}
-        />
-      </div>
-
-      {/* FEEDBACK */}
       {error && (
-        <div className="text-sm text-red-600">
-          {error}
+        <div className="flex items-center gap-2 rounded-lg bg-red-500/10 border border-red-500/25 px-3 py-2 text-xs text-red-400">
+          <AlertCircle size={13} /> {error}
         </div>
       )}
-
       {success && (
-        <div className="text-sm text-green-600">
-          Class created successfully
+        <div className="flex items-center gap-2 rounded-lg bg-emerald-500/10 border border-emerald-500/25 px-3 py-2 text-xs text-emerald-400">
+          <CheckCircle size={13} /> Class created successfully!
         </div>
       )}
 
-      {/* ACTION */}
-      <button
-        onClick={handleCreate}
-        disabled={loading}
-        className="
-          w-full py-2.5 rounded-lg
-          bg-black text-white text-sm font-medium
-          hover:bg-gray-800 transition
-          disabled:opacity-50 disabled:cursor-not-allowed
-        "
-      >
-        {loading ? "Creating…" : "Create Class"}
+      <button onClick={handleCreate} disabled={loading}
+        className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-sm font-semibold transition">
+        <Plus size={14} /> {loading ? "Creating…" : "Create Class"}
       </button>
-    </div>
-  );
-}
-
-/* =====================================================
-   INPUT
-===================================================== */
-function Input({ label, value, onChange, placeholder }) {
-  return (
-    <div>
-      <label className="block text-xs font-medium text-gray-500 mb-1">
-        {label}
-      </label>
-      <input
-        value={value}
-        onChange={e => onChange(e.target.value)}
-        placeholder={placeholder}
-        className="
-          w-full px-3 py-2 rounded-lg
-          border border-gray-300
-          text-sm
-          focus:outline-none focus:ring-2 focus:ring-black/20
-        "
-      />
     </div>
   );
 }

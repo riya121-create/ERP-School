@@ -6,7 +6,7 @@ export default function AdminLayout() {
   const { collapsed } = useSidebarStore();
 
   return (
-    <div className="min-h-screen bg-gray-100 dark:bg-gray-950">
+    <div className="min-h-screen bg-[#0f0f0f]">
 
       {/* SIDEBAR (fixed) */}
       <AdminSidebar />
@@ -18,8 +18,6 @@ export default function AdminLayout() {
           p-6 md:p-8
           overflow-y-auto
           transition-all duration-300
-
-          /* 🔑 IMPORTANT: exact match with sidebar width */
           ${collapsed ? "md:ml-20" : "md:ml-72"}
         `}
       >

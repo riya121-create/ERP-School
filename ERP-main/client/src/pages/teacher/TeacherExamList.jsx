@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import api from "../../services/api";
 import { useNavigate } from "react-router-dom";
+import BackButton from "../../components/BackButton";
 
 /* ================= ANIMATION ================= */
 const fadeUp = {
@@ -113,9 +114,10 @@ Promise.all([
 
   /* ================= UI ================= */
   return (
-    <div className="min-h-screen px-10 py-10 text-white bg-[#0B1220]">
+    <div className="text-white">
       {/* ================= HEADER ================= */}
       <motion.div variants={fadeUp} initial="hidden" animate="show">
+        <BackButton to="/teacher/exams" label="Exam Centre" />
         <h1 className="text-3xl font-bold">
           {mode === "performance"
             ? "Academic Performance Record"

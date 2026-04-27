@@ -2,6 +2,7 @@ import { useEffect, useState } from "react"
 import { useParams, useNavigate } from "react-router-dom"
 import { motion } from "framer-motion"
 import api from "../../services/api"
+import BackButton from "../../components/BackButton"
 
 /* ================= ANIMATIONS ================= */
 const fadeUp = {
@@ -70,12 +71,13 @@ export default function TeacherExamView() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0B1220] text-white px-10 py-10">
+    <div className="text-white">
 
       {/* ================= HEADER ================= */}
       <motion.div variants={fadeUp} initial="hidden" animate="show">
         <div className="flex justify-between items-start">
           <div>
+            <BackButton to="/teacher/exams/list" label="My Exams" />
             <h1 className="text-3xl font-bold">{exam.name}</h1>
             <p className="text-gray-400 mt-1">
               {exam.subject || "—"} · {exam.type || "—"} · {exam.mode || "—"}
@@ -84,7 +86,7 @@ export default function TeacherExamView() {
 
           <button
             onClick={() => navigate(-1)}
-            className="px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20 transition"
+            className="px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20 transition hidden"
           >
             ← Back
           </button>

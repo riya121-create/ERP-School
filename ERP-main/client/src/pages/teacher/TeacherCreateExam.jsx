@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import api from "../../services/api"
+import BackButton from "../../components/BackButton"
 
 /* ================= MOTION ================= */
 const fade = {
@@ -135,12 +136,11 @@ export default function TeacherCreateExam() {
 
   /* ================= UI ================= */
   return (
-    <div className="min-h-screen bg-[#F9FAFB] px-6 py-8">
+    <div className="text-gray-100">
+      <BackButton to="/teacher/exams" label="Exam Centre" />
       <motion.div variants={fade} initial="hidden" animate="show">
-        <h1 className="text-3xl font-semibold">Create Exam</h1>
-        <p className="text-gray-500 mt-1">
-          Advanced exam setup & evaluation rules
-        </p>
+        <h1 className="text-2xl font-bold text-white tracking-tight">Create Exam</h1>
+        <p className="text-gray-500 mt-1 text-sm">Advanced exam setup & evaluation rules</p>
       </motion.div>
 
       <div className="mt-10 grid lg:grid-cols-3 gap-10">
@@ -247,7 +247,7 @@ export default function TeacherCreateExam() {
             evaluationRules: form.evaluationRules.filter((_, x) => x !== i)
           })
         }}
-        className="h-11 rounded-lg border text-red-500"
+        className="h-11 rounded-lg border border-red-500/30 text-red-400 hover:bg-red-500/10 transition text-sm"
       >
         Remove
       </button>
@@ -264,7 +264,7 @@ export default function TeacherCreateExam() {
         ]
       })
     }
-    className="text-sm text-blue-600"
+    className="text-xs text-indigo-400 hover:text-indigo-300 transition"
   >
     + Add Evaluation Rule
   </button>
@@ -272,19 +272,19 @@ export default function TeacherCreateExam() {
 
           <Section title="Syllabus">
             {form.syllabus.map((c, i) => (
-              <div key={i} className="border rounded-xl p-4 space-y-3">
+              <div key={i} className="rounded-xl border border-white/[0.07] bg-white/[0.03] p-4 space-y-3">
                 <Input label={`Chapter ${i + 1}`} value={c.chapter}
                   onChange={v => updateChapter(i, v)} />
                 {c.topics.map((t, j) => (
                   <Input key={j} label={`Topic ${j + 1}`} value={t}
                     onChange={v => updateTopic(i, j, v)} />
                 ))}
-                <button onClick={() => addTopic(i)} className="text-sm text-blue-600">
+                <button onClick={() => addTopic(i)} className="text-xs text-indigo-400 hover:text-indigo-300 transition">
                   + Add Topic
                 </button>
               </div>
             ))}
-            <button onClick={addChapter} className="text-sm text-blue-600">
+            <button onClick={addChapter} className="text-xs text-indigo-400 hover:text-indigo-300 transition">
               + Add Chapter
             </button>
           </Section>
@@ -305,7 +305,7 @@ export default function TeacherCreateExam() {
           <motion.button
             whileTap={{ scale: 0.96 }}
             onClick={submit}
-            className="w-full h-12 rounded-xl bg-blue-600 text-white font-medium hover:bg-blue-700"
+            className="w-full h-12 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold transition text-sm"
           >
             Review Exam
           </motion.button>
@@ -317,23 +317,22 @@ export default function TeacherCreateExam() {
             <motion.div
               initial={{ opacity: 0, x: 40 }}
               animate={{ opacity: 1, x: 0 }}
-              className="bg-white rounded-3xl border p-8 space-y-4 shadow-xl"
+              className="rounded-2xl border border-white/[0.08] bg-[#161616] p-6 space-y-4 sticky top-8"
             >
-              <h2 className="text-lg font-semibold">Review & Publish</h2>
+              <h2 className="text-base font-semibold text-white">Review & Publish</h2>
 
-              <Preview label="Exam" value={form.name} />
-              <Preview label="Subject" value={form.subject} />
-              <Preview label="Classes" value={form.selectedClasses.length} />
+              <Preview label="Exam"     value={form.name} />
+              <Preview label="Subject"  value={form.subject} />
+              <Preview label="Classes"  value={form.selectedClasses.length} />
               <Preview label="Duration" value={duration} />
 
               <button onClick={() => finalSubmit("DRAFT")}
-                className="w-full h-11 rounded-xl border">
+                className="w-full h-11 rounded-xl border border-white/10 text-gray-300 hover:bg-white/[0.06] transition text-sm font-medium">
                 Save as Draft
               </button>
 
-              <button onClick={() => finalSubmit("PUBLISHED")}
-                disabled={loading}
-                className="w-full h-11 rounded-xl bg-emerald-600 text-white">
+              <button onClick={() => finalSubmit("PUBLISHED")} disabled={loading}
+                className="w-full h-11 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-sm font-semibold transition">
                 Publish Exam 🚀
               </button>
             </motion.div>
@@ -348,8 +347,8 @@ export default function TeacherCreateExam() {
 
 function Section({ title, children }) {
   return (
-    <motion.div variants={fade} className="bg-white rounded-2xl border p-6 space-y-5">
-      <h3 className="font-semibold text-lg">{title}</h3>
+    <motion.div variants={fade} className="rounded-2xl border border-white/[0.08] bg-[#161616] p-5 space-y-4">
+      <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider pb-2 border-b border-white/[0.06]">{title}</h3>
       {children}
     </motion.div>
   )
@@ -358,13 +357,13 @@ function Section({ title, children }) {
 function Input({ label, value, onChange, type = "text", disabled }) {
   return (
     <div>
-      <label className="text-sm text-gray-600">{label}</label>
+      <label className="block text-xs text-gray-500 mb-1.5 font-medium">{label}</label>
       <input
         type={type}
         value={value}
         disabled={disabled}
-        onChange={e => onChange(e.target.value)}
-        className="w-full mt-1 h-11 rounded-lg border px-3 disabled:bg-gray-100"
+        onChange={e => onChange?.(e.target.value)}
+        className="w-full bg-white/[0.05] border border-white/10 text-gray-200 placeholder-gray-600 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-indigo-500/60 transition disabled:opacity-40 disabled:cursor-not-allowed"
       />
     </div>
   )
@@ -373,15 +372,15 @@ function Input({ label, value, onChange, type = "text", disabled }) {
 function Select({ label, options, value, onChange }) {
   return (
     <div>
-      <label className="text-sm text-gray-600">{label}</label>
+      <label className="block text-xs text-gray-500 mb-1.5 font-medium">{label}</label>
       <select
         value={value}
         onChange={e => onChange(e.target.value)}
-        className="w-full mt-1 h-11 rounded-lg border px-3"
+        className="w-full bg-white/[0.05] border border-white/10 text-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-indigo-500/60 transition"
       >
-        <option value="">Select</option>
+        <option value="" className="bg-[#1a1a1a]">Select</option>
         {options.map(o => (
-          <option key={o} value={o}>{o}</option>
+          <option key={o} value={o} className="bg-[#1a1a1a]">{o}</option>
         ))}
       </select>
     </div>
@@ -392,8 +391,11 @@ function ClassPill({ label, active, onClick }) {
   return (
     <div
       onClick={onClick}
-      className={`px-4 py-2 rounded-full cursor-pointer text-sm border
-      ${active ? "bg-blue-600 text-white" : "bg-white"}`}
+      className={`px-4 py-2 rounded-xl cursor-pointer text-sm border font-medium transition
+        ${active
+          ? "bg-indigo-600 border-indigo-500 text-white"
+          : "bg-white/[0.04] border-white/[0.08] text-gray-400 hover:bg-white/[0.08] hover:text-gray-200"
+        }`}
     >
       {label}
     </div>
@@ -402,19 +404,24 @@ function ClassPill({ label, active, onClick }) {
 
 function Toggle({ label, value, onChange }) {
   return (
-    <div className="flex justify-between items-center">
-      <span className="text-sm">{label}</span>
-      <input type="checkbox" checked={value}
-        onChange={e => onChange(e.target.checked)} />
+    <div className="flex justify-between items-center py-1">
+      <span className="text-sm text-gray-300 capitalize">{label}</span>
+      <button
+        type="button"
+        onClick={() => onChange(!value)}
+        className={`w-10 h-5 rounded-full transition-colors relative ${value ? "bg-indigo-600" : "bg-white/10"}`}
+      >
+        <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-all ${value ? "left-5" : "left-0.5"}`} />
+      </button>
     </div>
   )
 }
 
 function Preview({ label, value }) {
   return (
-    <div className="flex justify-between text-sm">
+    <div className="flex justify-between text-sm py-1 border-b border-white/[0.05]">
       <span className="text-gray-500">{label}</span>
-      <span className="font-medium">{value}</span>
+      <span className="font-medium text-gray-200">{value}</span>
     </div>
   )
 }

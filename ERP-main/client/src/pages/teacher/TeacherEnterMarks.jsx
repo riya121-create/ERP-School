@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import api from "../../services/api";
+import BackButton from "../../components/BackButton";
 
 /* ================= ANIMATIONS ================= */
 const fadeUp = {
@@ -162,16 +163,12 @@ export default function TeacherEnterMarks() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#0B1220] via-[#0E1628] to-black text-white px-10 py-10">
-      <motion.div
-        variants={fadeUp}
-        initial="hidden"
-        animate="show"
-        className="max-w-6xl mx-auto"
-      >
+    <div className="text-white">
+      <div className="max-w-6xl mx-auto">
         {/* HEADER */}
         <div className="flex justify-between mb-8">
           <div>
+            <BackButton to="/teacher/exams/list" label="My Exams" />
             <h1 className="text-4xl font-semibold">
               Enter Marks
             </h1>
@@ -182,7 +179,7 @@ export default function TeacherEnterMarks() {
 
           <button
             onClick={() => navigate(-1)}
-            className="rounded-xl px-4 py-2 bg-white/10 hover:bg-white/20"
+            className="rounded-xl px-4 py-2 bg-white/10 hover:bg-white/20 hidden"
           >
             ← Back
           </button>
@@ -279,7 +276,7 @@ export default function TeacherEnterMarks() {
             </button>
           </div>
         )}
-      </motion.div>
+      </div>
     </div>
   );
 }

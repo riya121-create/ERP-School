@@ -2,6 +2,7 @@ import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { useNavigate } from "react-router-dom"
 import api from "../../services/api"
+import BackButton from "../../components/BackButton"
 
 export default function TeacherHomework() {
   const navigate = useNavigate()
@@ -86,7 +87,7 @@ export default function TeacherHomework() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0B1220] text-white p-8">
+    <div className="text-white">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <motion.div
@@ -95,6 +96,7 @@ export default function TeacherHomework() {
           className="flex items-center justify-between mb-8"
         >
           <div>
+            <BackButton to="/teacher" label="Dashboard" />
             <h1 className="text-4xl font-bold">Homework Management</h1>
             <p className="text-gray-400 mt-2">Create and manage homework assignments</p>
           </div>

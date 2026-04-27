@@ -40,6 +40,8 @@ import Classes from "./pages/admin/Classes";
 import ClassDetails from "./pages/admin/ClassDetails";
 import AddStudent from "./pages/admin/AddStudent";
 import AdminStudents from "./pages/admin/AdminStudents";
+import StudentProfile from "./pages/admin/StudentProfile";
+import AdminProfile from "./pages/admin/AdminProfile";
 
 // ===== OTHER ROLES =====
 import TeacherDashboard from "./pages/teacher/TeacherDashboard";
@@ -47,6 +49,7 @@ import TeacherAttendance from "./pages/teacher/MarkAttendance";
 import TeacherHomework from "./pages/teacher/TeacherHomework";
 import TeacherNotes from "./pages/teacher/TeacherNotes";
 import TeacherPublishResults from "./pages/teacher/TeacherPublishResults";
+import TeacherLayout from "./components/teacher/TeacherLayout";
 import StudentDashboard from "./pages/student/StudentDashboard";
 import ParentDashboard from "./pages/parent/ParentDashboard";
 import ParentDashboardEnhanced from "./pages/parent/ParentDashboardEnhanced";
@@ -132,6 +135,8 @@ function App() {
 
     {/* ===== USERS ===== */}
     <Route path="students" element={<AdminStudents />} />
+    <Route path="students/:studentId" element={<StudentProfile />} />
+    <Route path="profile" element={<AdminProfile />} />
     <Route path="teachers" element={<Teachers />} />
     <Route path="teachers/add" element={<AddTeacher />} />
     <Route path="teachers/edit/:teacherId" element={<EditTeacher />} />
@@ -165,56 +170,29 @@ function App() {
 
         {/* ================= TEACHER ================= */}
         <Route path="/teacher" element={<ProtectedRoute role="teacher" />}>
-          <Route index element={<TeacherDashboard />} />
-          <Route path="attendance" element={<TeacherAttendance />} />
-          <Route path="homework" element={<TeacherHomework />} />
-          <Route path="notes" element={<TeacherNotes />} />
-          <Route path="publish-results/:examId" element={<TeacherPublishResults />} />
-<Route
-  path="final-exams/view/:id"
-  element={<TeacherAdminFinalExamView />}
-/>
-<Route
-  path="final-exams/:examId/marks"
-  element={<TeacherFinalExamMarks />}
-/>
+          <Route element={<TeacherLayout />}>
+            <Route index element={<TeacherDashboard />} />
+            <Route path="attendance" element={<TeacherAttendance />} />
+            <Route path="homework" element={<TeacherHomework />} />
+            <Route path="notes" element={<TeacherNotes />} />
+            <Route path="publish-results/:examId" element={<TeacherPublishResults />} />
+            <Route path="final-exams/view/:id" element={<TeacherAdminFinalExamView />} />
+            <Route path="final-exams/:examId/marks" element={<TeacherFinalExamMarks />} />
+            <Route path="timetable" element={<TeacherTimetableMini />} />
+            <Route path="classes" element={<TeacherClasses />} />
 
-          <Route
-  path="timetable"
-  element={<TeacherTimetableMini/>}
-/>
- <Route path="classes" element={<TeacherClasses />} />
-
-     {/* ===== EXAMS MODULE ===== */}
-  <Route path="exams" element={<Outlet />}>
-    <Route index element={<TeacherExamHub />} />
-    <Route path="create" element={<TeacherCreateExam />} />
-    <Route path="list" element={<TeacherExamList />} />
-     <Route path="view/:id" element={<TeacherExamView />} />
- <Route
-  path=":examId/marks"
-  element={<TeacherEnterMarks />}
-/>
-
- {/* ✅ ACADEMIC PERFORMANCE RECORD */}
-
- {/* 🔹 STEP 1: Performance LIST */}
-  <Route
-    path="performance"
-    element={<TeacherExamList mode="performance" />}
-  />
-
-  {/* 🔹 STEP 2: Performance DETAIL */}
-  <Route
-    path="performance/:examId"
-    element={<TeacherExamResult />}
-  />
-
-
-
-
-  </Route>
-</Route>
+            {/* EXAMS */}
+            <Route path="exams" element={<Outlet />}>
+              <Route index element={<TeacherExamHub />} />
+              <Route path="create" element={<TeacherCreateExam />} />
+              <Route path="list" element={<TeacherExamList />} />
+              <Route path="view/:id" element={<TeacherExamView />} />
+              <Route path=":examId/marks" element={<TeacherEnterMarks />} />
+              <Route path="performance" element={<TeacherExamList mode="performance" />} />
+              <Route path="performance/:examId" element={<TeacherExamResult />} />
+            </Route>
+          </Route>
+        </Route>
         {/* ================= STUDENT ================= */}
         <Route path="/student" element={<ProtectedRoute role="student" />}>
           <Route index element={<StudentDashboard />} />

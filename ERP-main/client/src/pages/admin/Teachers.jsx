@@ -1,10 +1,15 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../../services/api";
+import {
+  Search, Plus, Users, UserCheck, UserX,
+  Eye, MoreHorizontal, Edit2, BookOpen,
+  DollarSign, Calendar, BarChart2, Trash2
+} from "lucide-react";
 
-function Teachers() {
+export default function Teachers() {
   const [teachers, setTeachers] = useState([]);
-  const [search, setSearch] = useState("");
+  const [search, setSearch]     = useState("");
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -14,213 +19,207 @@ function Teachers() {
   }, []);
 
   const filtered = teachers.filter(t =>
-    t.name.toLowerCase().includes(search.toLowerCase()) ||
-    t.email.toLowerCase().includes(search.toLowerCase())
+    t.name?.toLowerCase().includes(search.toLowerCase()) ||
+    t.email?.toLowerCase().includes(search.toLowerCase())
   );
 
-  const activeCount = teachers.filter(t => t.isActive).length;
+  const activeCount   = teachers.filter(t => t.isActive).length;
+  const inactiveCount = teachers.length - activeCount;
 
-  const handleDelete = async (teacherId) => {
-    if (!confirm("Are you sure you want to delete this teacher?")) return;
-    
+  const handleDelete = async (teacherId, name) => {
+    if (!confirm(`Delete ${name}? This cannot be undone.`)) return;
     try {
       await api.delete(`/admin/teachers/${teacherId}`);
-      alert("Teacher deleted successfully");
-      setTeachers(teachers.filter(t => t._id !== teacherId));
-    } catch (error) {
-      alert(error.response?.data?.message || "Failed to delete teacher");
+      setTeachers(prev => prev.filter(t => t._id !== teacherId));
+    } catch (err) {
+      alert(err.response?.data?.message || "Failed to delete teacher");
     }
   };
 
-  const handleAssignSubjects = (teacherId) => {
-    navigate(`/admin/teachers/${teacherId}/subjects`);
-  };
-
-  const handleSalary = (teacherId) => {
-    navigate(`/admin/teachers/${teacherId}/salary`);
-  };
-
-  const handleLeave = (teacherId) => {
-    navigate(`/admin/teachers/${teacherId}/leave`);
-  };
-
-  const handlePerformance = (teacherId) => {
-    navigate(`/admin/teachers/${teacherId}/performance`);
-  };
-
   return (
-    <>
-      {/* ===== HEADER ===== */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
-        <div>
-          <h1 className="text-3xl font-bold">Teachers</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            Manage faculty & assignments
-          </p>
-        </div>
+    <div className="space-y-5 text-gray-100">
 
+      {/* HEADER */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-white tracking-tight">Teachers</h1>
+          <p className="text-sm text-gray-500 mt-0.5">Manage faculty & assignments</p>
+        </div>
         <button
           onClick={() => navigate("/admin/teachers/add")}
-          className="px-5 py-2 bg-black text-white rounded-lg hover:opacity-90"
+          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold transition self-start sm:self-auto"
         >
-          + Add Teacher
+          <Plus size={15} /> Add Teacher
         </button>
       </div>
 
-      {/* ===== STATS ===== */}
-      <div className="grid grid-cols-3 gap-4 mb-6">
-        <Stat label="Total Teachers" value={teachers.length} />
-        <Stat label="Active" value={activeCount} />
-        <Stat label="Inactive" value={teachers.length - activeCount} />
+      {/* STATS */}
+      <div className="grid grid-cols-3 gap-3">
+        <StatCard icon={<Users size={15} />}     label="Total"    value={teachers.length} color="indigo"  />
+        <StatCard icon={<UserCheck size={15} />} label="Active"   value={activeCount}     color="emerald" />
+        <StatCard icon={<UserX size={15} />}     label="Inactive" value={inactiveCount}   color="red"     />
       </div>
 
-      {/* ===== SEARCH ===== */}
-      <div className="mb-4">
+      {/* SEARCH */}
+      <div className="relative max-w-sm">
+        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-600" />
         <input
           value={search}
           onChange={e => setSearch(e.target.value)}
           placeholder="Search by name or email…"
-          className="w-full md:w-96 border rounded-lg px-4 py-2 focus:outline-none focus:ring"
+          className="w-full bg-white/[0.05] border border-white/10 text-gray-200 placeholder-gray-600 rounded-lg pl-9 pr-3 py-2 text-sm focus:outline-none focus:border-indigo-500/60 transition"
         />
       </div>
 
-      {/* ===== TABLE ===== */}
-      <div className="bg-white dark:bg-gray-900 rounded-xl shadow overflow-x-auto">
-        <table className="w-full">
-          <thead className="bg-gray-100 dark:bg-gray-800 sticky top-0">
-            <tr>
-              <Th>Teacher</Th>
-              <Th>Department</Th>
-              <Th>Contact</Th>
-              <Th>Status</Th>
-              <Th>Actions</Th>
-            </tr>
-          </thead>
+      {/* TABLE */}
+      <div className="rounded-2xl border border-white/[0.08] bg-[#161616] overflow-hidden">
 
-          <tbody>
-            {filtered.length === 0 ? (
-              <tr>
-                <td colSpan="5" className="p-8 text-center text-gray-500">
-                  No teachers found
-                </td>
-              </tr>
-            ) : (
-              filtered.map(t => (
-                <tr
-                  key={t._id}
-                  className="border-t hover:bg-gray-50 transition"
-                >
-                  <td className="p-4 flex items-center gap-3">
-                    <Avatar name={t.name} />
-                    <div>
-                      <p className="font-medium">{t.name}</p>
-                      <p className="text-xs text-gray-500">{t.email}</p>
-                    </div>
-                  </td>
+        {/* header */}
+        <div className="grid grid-cols-[2.5fr_1.5fr_1fr_1fr_auto] gap-3 px-5 py-3 bg-white/[0.03] border-b border-white/[0.06] text-[11px] font-semibold uppercase tracking-wider text-gray-600">
+          <div>Teacher</div>
+          <div>Department</div>
+          <div>Contact</div>
+          <div className="text-center">Status</div>
+          <div className="text-right pr-1">Actions</div>
+        </div>
 
-                  <td className="p-4 text-sm">
-                    {t.department || "—"}
-                  </td>
+        {/* rows */}
+        <div className="divide-y divide-white/[0.04]">
+          {filtered.length === 0 ? (
+            <div className="py-16 text-center">
+              <Users size={24} className="text-gray-700 mx-auto mb-3" />
+              <p className="text-sm text-gray-600">No teachers found</p>
+            </div>
+          ) : (
+            filtered.map(t => (
+              <div
+                key={t._id}
+                className="grid grid-cols-[2.5fr_1.5fr_1fr_1fr_auto] gap-3 px-5 py-3.5 items-center hover:bg-white/[0.02] transition text-sm"
+              >
+                {/* teacher info */}
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center text-sm font-bold flex-shrink-0">
+                    {t.name?.charAt(0).toUpperCase()}
+                  </div>
+                  <div>
+                    <p className="font-medium text-gray-100">{t.name}</p>
+                    <p className="text-xs text-gray-600">{t.email}</p>
+                  </div>
+                </div>
 
-                  <td className="p-4 text-sm">
-                    {t.phone || "—"}
-                  </td>
+                {/* department */}
+                <div className="text-gray-400 text-sm">{t.department || "—"}</div>
 
-                  <td className="p-4">
-                    <StatusBadge active={t.isActive} />
-                  </td>
+                {/* contact */}
+                <div className="text-gray-500 text-sm">{t.phone || "—"}</div>
 
-                  <td className="p-4">
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => navigate(`/admin/teachers/edit/${t._id}`)}
-                        className="px-3 py-1 text-xs bg-blue-100 hover:bg-blue-200 rounded"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => handleAssignSubjects(t._id)}
-                        className="px-3 py-1 text-xs bg-green-100 hover:bg-green-200 rounded"
-                      >
-                        Subjects
-                      </button>
-                      <button
-                        onClick={() => handleSalary(t._id)}
-                        className="px-3 py-1 text-xs bg-purple-100 hover:bg-purple-200 rounded"
-                      >
-                        Salary
-                      </button>
-                      <button
-                        onClick={() => handleLeave(t._id)}
-                        className="px-3 py-1 text-xs bg-yellow-100 hover:bg-yellow-200 rounded"
-                      >
-                        Leave
-                      </button>
-                      <button
-                        onClick={() => handlePerformance(t._id)}
-                        className="px-3 py-1 text-xs bg-indigo-100 hover:bg-indigo-200 rounded"
-                      >
-                        Performance
-                      </button>
-                      <button
-                        onClick={() => handleDelete(t._id)}
-                        className="px-3 py-1 text-xs bg-red-100 hover:bg-red-200 rounded"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+                {/* status */}
+                <div className="flex justify-center">
+                  <span className={`flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border
+                    ${t.isActive
+                      ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/25"
+                      : "bg-red-500/15 text-red-400 border-red-500/25"
+                    }`}>
+                    <span className={`w-1.5 h-1.5 rounded-full ${t.isActive ? "bg-emerald-400" : "bg-red-400"}`} />
+                    {t.isActive ? "Active" : "Inactive"}
+                  </span>
+                </div>
+
+                {/* actions */}
+                <div className="flex items-center justify-end gap-1">
+                  {/* Eye / View */}
+                  <button
+                    title="View Profile"
+                    onClick={() => navigate(`/admin/teachers/edit/${t._id}`)}
+                    className="p-1.5 rounded-lg text-gray-500 hover:text-white hover:bg-white/10 transition"
+                  >
+                    <Eye size={15} />
+                  </button>
+
+                  {/* Three-dot menu */}
+                  <ActionMenu
+                    items={[
+                      { label: "Edit",        icon: <Edit2 size={13} />,      color: "blue",   onClick: () => navigate(`/admin/teachers/edit/${t._id}`) },
+                      { label: "Subjects",    icon: <BookOpen size={13} />,   color: "green",  onClick: () => navigate(`/admin/teachers/${t._id}/subjects`) },
+                      { label: "Salary",      icon: <DollarSign size={13} />, color: "purple", onClick: () => navigate(`/admin/teachers/${t._id}/salary`) },
+                      { label: "Leave",       icon: <Calendar size={13} />,   color: "amber",  onClick: () => navigate(`/admin/teachers/${t._id}/leave`) },
+                      { label: "Performance", icon: <BarChart2 size={13} />,  color: "indigo", onClick: () => navigate(`/admin/teachers/${t._id}/performance`) },
+                      { label: "Delete",      icon: <Trash2 size={13} />,     color: "red",    onClick: () => handleDelete(t._id, t.name) },
+                    ]}
+                  />
+                </div>
+              </div>
+            ))
+          )}
+        </div>
       </div>
-    </>
-  );
-}
-
-/* =========================
-   SMALL COMPONENTS
-========================= */
-
-function Stat({ label, value }) {
-  return (
-    <div className="bg-white rounded-xl p-4 shadow">
-      <p className="text-xs text-gray-500">{label}</p>
-      <p className="text-2xl font-bold mt-1">{value}</p>
     </div>
   );
 }
 
-function Th({ children }) {
+/* ===== STAT CARD ===== */
+const STAT_COLORS = {
+  indigo:  { bg: "bg-indigo-500/10",  text: "text-indigo-400",  border: "border-indigo-500/20"  },
+  emerald: { bg: "bg-emerald-500/10", text: "text-emerald-400", border: "border-emerald-500/20" },
+  red:     { bg: "bg-red-500/10",     text: "text-red-400",     border: "border-red-500/20"     },
+};
+function StatCard({ icon, label, value, color }) {
+  const c = STAT_COLORS[color];
   return (
-    <th className="p-4 text-left text-sm font-semibold">
-      {children}
-    </th>
-  );
-}
-
-function Avatar({ name }) {
-  return (
-    <div className="w-10 h-10 rounded-full bg-black text-white flex items-center justify-center text-sm font-semibold">
-      {name.charAt(0).toUpperCase()}
+    <div className={`flex items-center gap-3 rounded-xl border ${c.border} ${c.bg} px-4 py-3`}>
+      <span className={c.text}>{icon}</span>
+      <div>
+        <p className="text-[11px] text-gray-600 uppercase tracking-wider font-medium">{label}</p>
+        <p className="text-xl font-bold text-white leading-none mt-0.5">{value}</p>
+      </div>
     </div>
   );
 }
 
-function StatusBadge({ active }) {
+/* ===== THREE-DOT MENU ===== */
+function ActionMenu({ items }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const handler = e => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const colorMap = {
+    blue:   "text-blue-400 hover:bg-blue-500/10",
+    green:  "text-emerald-400 hover:bg-emerald-500/10",
+    purple: "text-purple-400 hover:bg-purple-500/10",
+    amber:  "text-amber-400 hover:bg-amber-500/10",
+    indigo: "text-indigo-400 hover:bg-indigo-500/10",
+    red:    "text-red-400 hover:bg-red-500/10",
+  };
+
   return (
-    <span
-      className={`px-3 py-1 rounded-full text-xs font-medium ${
-        active
-          ? "bg-green-100 text-green-700"
-          : "bg-red-100 text-red-700"
-      }`}
-    >
-      {active ? "Active" : "Inactive"}
-    </span>
+    <div className="relative" ref={ref}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="p-1.5 rounded-lg text-gray-500 hover:text-white hover:bg-white/10 transition"
+        title="More actions"
+      >
+        <MoreHorizontal size={15} />
+      </button>
+
+      {open && (
+        <div className="absolute right-0 z-50 mt-1 w-44 bg-[#1c1c1c] border border-white/10 rounded-xl shadow-2xl py-1 overflow-hidden">
+          {items.map(item => (
+            <button
+              key={item.label}
+              onClick={() => { item.onClick(); setOpen(false); }}
+              className={`w-full flex items-center gap-2.5 px-3.5 py-2 text-sm font-medium transition ${colorMap[item.color] || "text-gray-300 hover:bg-white/5"}`}
+            >
+              {item.icon}
+              {item.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
-
-export default Teachers;

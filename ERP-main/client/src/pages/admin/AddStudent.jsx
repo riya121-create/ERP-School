@@ -43,8 +43,18 @@ function AddStudent() {
   /* =====================
      HANDLERS
   ====================== */
-  const change = e =>
-    setForm({ ...form, [e.target.name]: e.target.value });
+  const change = e => {
+    const { name, value } = e.target;
+    
+    // Mobile number validation for parentPhone
+    if (name === "parentPhone") {
+      // Only allow numbers and limit to 10 digits
+      const phoneValue = value.replace(/\D/g, "").slice(0, 10);
+      setForm({ ...form, [name]: phoneValue });
+    } else {
+      setForm({ ...form, [name]: value });
+    }
+  };
 
   const handleVehicleChange = async e => {
     const vehicleId = e.target.value;
@@ -79,6 +89,12 @@ function AddStudent() {
   };
 
   const submit = async () => {
+    // Validate mobile number (must be exactly 10 digits)
+    if (form.parentPhone && form.parentPhone.length !== 10) {
+      alert("Parent phone number must be exactly 10 digits");
+      return;
+    }
+
     try {
       await api.post("/admin/students", {
         ...form,
@@ -92,15 +108,17 @@ function AddStudent() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 p-6 max-w-4xl mx-auto">
 
       {/* ===== HEADER ===== */}
-      <h1 className="text-3xl font-bold mb-2">
-        Add New Student
-      </h1>
-      <p className="text-gray-500 mb-8">
-        Complete student onboarding in 4 simple steps
-      </p>
+      <div className="bg-white rounded-2xl shadow-lg p-6 border border-blue-100 mb-8">
+        <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent mb-2">
+          Add New Student
+        </h1>
+        <p className="text-gray-600 text-lg">
+          Complete student onboarding in 4 simple steps
+        </p>
+      </div>
 
       {/* ===== STEPS ===== */}
       <StepIndicator step={step} />
@@ -128,7 +146,33 @@ function AddStudent() {
             <SectionTitle title="Parent / Guardian Details" />
             <div className="grid md:grid-cols-2 gap-4">
               <Input name="parentName" label="Parent Name" onChange={change} />
-              <Input name="parentPhone" label="Parent Phone" onChange={change} />
+              <div>
+                <label className="block text-sm mb-1">Parent Phone</label>
+                <input
+                  name="parentPhone"
+                  type="tel"
+                  placeholder="Enter 10-digit mobile number"
+                  value={form.parentPhone}
+                  onChange={change}
+                  className={`w-full border rounded-lg p-3 ${
+                    form.parentPhone && form.parentPhone.length !== 10
+                      ? "border-red-500 focus:ring-red-500"
+                      : "border-gray-300 focus:ring-blue-500"
+                  }`}
+                  maxLength={10}
+                />
+                {form.parentPhone && form.parentPhone.length > 0 && (
+                  <p className={`text-xs mt-1 ${
+                    form.parentPhone.length === 10
+                      ? "text-green-600"
+                      : "text-red-600"
+                  }`}>
+                    {form.parentPhone.length === 10
+                      ? "✓ Valid phone number"
+                      : `⚠ ${10 - form.parentPhone.length} more digit${10 - form.parentPhone.length > 1 ? 's' : ''} needed`}
+                  </p>
+                )}
+              </div>
             </div>
 
             <div className="mt-4">
@@ -216,7 +260,7 @@ function AddStudent() {
           {step > 1 ? (
             <button
               onClick={() => setStep(step - 1)}
-              className="px-6 py-2 rounded-lg border"
+              className="px-6 py-3 rounded-xl border-2 border-gray-300 text-gray-700 hover:bg-gray-50 transition-all duration-200 font-medium"
             >
               ← Back
             </button>
@@ -225,14 +269,14 @@ function AddStudent() {
           {step < 4 ? (
             <button
               onClick={() => setStep(step + 1)}
-              className="px-8 py-2 bg-black text-white rounded-lg"
+              className="px-8 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-lg hover:shadow-xl font-medium"
             >
               Next →
             </button>
           ) : (
             <button
               onClick={submit}
-              className="px-8 py-2 bg-green-600 text-white rounded-lg"
+              className="px-8 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl hover:from-green-700 hover:to-emerald-700 transition-all duration-200 shadow-lg hover:shadow-xl font-medium"
             >
               ✓ Save Student
             </button>
@@ -250,17 +294,26 @@ function AddStudent() {
 
 function StepIndicator({ step }) {
   return (
-    <div className="flex gap-4">
+    <div className="flex gap-3">
       {["Student Info", "Parent Info", "Transport", "Review"].map((label, i) => (
         <div
           key={label}
-          className={`flex-1 text-center py-2 rounded-full text-sm font-medium ${
+          className={`flex-1 text-center py-3 rounded-full text-sm font-medium transition-all duration-200 ${
             step === i + 1
-              ? "bg-black text-white"
-              : "bg-gray-100 text-gray-500"
+              ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg"
+              : "bg-gradient-to-r from-gray-100 to-gray-200 text-gray-600"
           }`}
         >
-          {i + 1}. {label}
+          <div className="flex items-center justify-center space-x-2">
+            <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+              step === i + 1
+                ? "bg-white text-blue-600"
+                : "bg-gray-300 text-gray-600"
+            }`}>
+              {i + 1}
+            </span>
+            <span>{label}</span>
+          </div>
         </div>
       ))}
     </div>
@@ -269,7 +322,7 @@ function StepIndicator({ step }) {
 
 function SectionTitle({ title }) {
   return (
-    <h2 className="text-xl font-semibold mb-6">
+    <h2 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent mb-6">
       {title}
     </h2>
   );
@@ -279,11 +332,11 @@ function ReviewCard({ form }) {
   return (
     <div className="grid md:grid-cols-2 gap-4 text-sm">
       {Object.entries(form).map(([k, v]) => (
-        <div key={k} className="bg-gray-50 rounded-lg p-3">
-          <p className="text-gray-500 capitalize">
-            {k.replace(/([A-Z])/g, " $1")}
+        <div key={k} className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 border border-blue-100">
+          <p className="text-blue-600 font-medium capitalize mb-1">
+            {k.replace(/([A-Z])/g, " $1").trim()}
           </p>
-          <p className="font-medium">
+          <p className="font-semibold text-gray-800">
             {v || "—"}
           </p>
         </div>
@@ -295,8 +348,8 @@ function ReviewCard({ form }) {
 function Input({ label, ...props }) {
   return (
     <div>
-      <label className="block text-sm mb-1">{label}</label>
-      <input {...props} className="w-full border rounded-lg p-3" />
+      <label className="block text-sm font-medium text-gray-700 mb-2">{label}</label>
+      <input {...props} className="w-full border-2 border-gray-200 rounded-xl p-3 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200" />
     </div>
   );
 }
@@ -304,8 +357,8 @@ function Input({ label, ...props }) {
 function Select({ label, ...props }) {
   return (
     <div>
-      <label className="block text-sm mb-1">{label}</label>
-      <select {...props} className="w-full border rounded-lg p-3">
+      <label className="block text-sm font-medium text-gray-700 mb-2">{label}</label>
+      <select {...props} className="w-full border-2 border-gray-200 rounded-xl p-3 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-200">
         <option value="">Select</option>
         <option>Male</option>
         <option>Female</option>

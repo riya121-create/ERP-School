@@ -1,720 +1,327 @@
 import { useState, useMemo, useEffect } from "react";
 import api from "@/services/api";
-import FeeExplore from "./FeeExplore"; 
-/*
-=====================================================
-SCHOOL FEE STRUCTURE — FINAL CORRECT VERSION
-• STOP-wise entry allowed
-• STOP-wise total NOT added in summary
-• Monthly + Annual summary
-• Component-wise breakdown
-=====================================================
-*/
+import FeeExplore from "./FeeExplore";
+import { Plus, Trash2, Save, Bus, BarChart2, BookOpen, ChevronDown } from "lucide-react";
 
 export default function FeeStructure() {
   const [mode, setMode] = useState("class");
-const [sections, setSections] = useState([]);
-
-  /* ================= STRUCTURE METADATA ================= */
-  const [basicInfo, setBasicInfo] = useState({
-  session: "",
-  className: "",
-  section:"",
-    classId: "",
-  structureName: "",
-});
-
-
-  /* ================= FEE COMPONENTS ================= */
-  const [components, setComponents] = useState([
-    {
-      name: "Tuition Fee",
-      amount: "",
-      frequency: "Monthly",
-      refundable: false,
-      optional: false,
-    },
-  ]);
-
-  /* ================= STUDENT OVERRIDE ================= */
-  const [studentFee, setStudentFee] = useState({
-    studentId: "",
-    overrideAmount: "",
-    reason: "",
-  });
-
-  /* ================= TRANSPORT DATA ================= */
+  const [sections, setSections] = useState([]);
+  const [classes, setClasses]   = useState([]);
   const [vehicles, setVehicles] = useState([]);
 
+  const [basicInfo, setBasicInfo] = useState({ session: "", className: "", section: "", classId: "", structureName: "" });
+  const [components, setComponents] = useState([{ name: "Tuition Fee", amount: "", frequency: "Monthly", refundable: false, optional: false }]);
+  const [transportConfig, setTransportConfig] = useState({ feeMode: "TRANSPORT", vehicleId: "", transportFee: "", stopFees: {}, stopNames: {} });
+  const [studentFee, setStudentFee] = useState({ studentId: "", overrideAmount: "", reason: "" });
+
   useEffect(() => {
-    api.get("/admin/transport").then(res => {
-      setVehicles(res.data || []);
-    });
+    api.get("/admin/classes").then(r => setClasses(r.data || [])).catch(() => {});
+    api.get("/admin/transport").then(r => setVehicles(r.data || [])).catch(() => {});
   }, []);
 
-const [classes, setClasses] = useState([]);
-
-useEffect(() => {
-  api.get("/admin/classes")
-    .then(res => setClasses(res.data || []))
-    .catch(err => console.error("Classes fetch error", err));
-}, []);
-
-
-  /* ================= TRANSPORT CONFIG ================= */
-  const [transportConfig, setTransportConfig] = useState({
-    feeMode: "TRANSPORT", 
-    vehicleId: "",
-    transportFee: "",
-    stopFees: {},
-    stopNames: {},  
-  });
-
-  const selectedVehicle = vehicles.find(
-    v => v._id === transportConfig.vehicleId
-  );
-
-  /* ================= AUTO STRUCTURE NAME ================= */
   useEffect(() => {
-  if (
-    basicInfo.session &&
-    basicInfo.className &&
-    basicInfo.section
-  ) {
-    setBasicInfo(prev => ({
-      ...prev,
-      structureName: `${prev.className}-${prev.section} (${prev.session})`,
-    }));
-  }
-}, [basicInfo.session, basicInfo.className, basicInfo.section]);
+    if (basicInfo.session && basicInfo.className && basicInfo.section)
+      setBasicInfo(p => ({ ...p, structureName: `${p.className}-${p.section} (${p.session})` }));
+  }, [basicInfo.session, basicInfo.className, basicInfo.section]);
 
+  const selectedVehicle = vehicles.find(v => v._id === transportConfig.vehicleId);
 
-  /* ================= COMPONENT BREAKDOWN ================= */
-  const componentBreakdown = useMemo(() => {
-    return components.map(c => ({
-      name: c.name || "Unnamed",
-      frequency: c.frequency,
-      monthly:
-        c.frequency === "Monthly"
-          ? Number(c.amount || 0)
-          : 0,
-      annual:
-        c.frequency === "Monthly"
-          ? Number(c.amount || 0) * 12
-          : Number(c.amount || 0),
-    }));
-  }, [components]);
+  const componentBreakdown = useMemo(() => components.map(c => ({
+    name: c.name || "Unnamed", frequency: c.frequency,
+    monthly: c.frequency === "Monthly" ? Number(c.amount || 0) : 0,
+    annual:  c.frequency === "Monthly" ? Number(c.amount || 0) * 12 : Number(c.amount || 0),
+  })), [components]);
 
-  /* ================= MONTHLY BASE TOTAL ================= */
-  const monthlyFeeTotal = useMemo(() => {
-    const componentMonthly = componentBreakdown.reduce(
-      (sum, c) => sum + c.monthly,
-      0
-    );
-
-    const transportMonthly =
-      transportConfig.vehicleId &&
-      transportConfig.feeMode === "TRANSPORT"
-        ? Number(transportConfig.transportFee || 0)
-        : 0;
-
-    return componentMonthly + transportMonthly;
+  const monthlyTotal = useMemo(() => {
+    const comp = componentBreakdown.reduce((s, c) => s + c.monthly, 0);
+    const trans = transportConfig.vehicleId && transportConfig.feeMode === "TRANSPORT" ? Number(transportConfig.transportFee || 0) : 0;
+    return comp + trans;
   }, [componentBreakdown, transportConfig]);
 
-  /* ================= ANNUAL BASE TOTAL ================= */
-  const annualFeeTotal = useMemo(() => {
-    const componentAnnual = componentBreakdown.reduce(
-      (sum, c) => sum + c.annual,
-      0
-    );
-
-    const transportAnnual =
-      transportConfig.vehicleId &&
-      transportConfig.feeMode === "TRANSPORT"
-        ? Number(transportConfig.transportFee || 0) * 12
-        : 0;
-
-    return componentAnnual + transportAnnual;
+  const annualTotal = useMemo(() => {
+    const comp = componentBreakdown.reduce((s, c) => s + c.annual, 0);
+    const trans = transportConfig.vehicleId && transportConfig.feeMode === "TRANSPORT" ? Number(transportConfig.transportFee || 0) * 12 : 0;
+    return comp + trans;
   }, [componentBreakdown, transportConfig]);
 
-  /* ================= HANDLERS ================= */
- /* ================= HANDLERS ================= */
-const addComponent = () => {
-  setComponents([
-    ...components,
-    {
-      name: "",
-      amount: "",
-      frequency: "Monthly",
-      refundable: false,
-      optional: false,
-    },
-  ]);
-};
+  const addComponent = () => setComponents(p => [...p, { name: "", amount: "", frequency: "Monthly", refundable: false, optional: false }]);
+  const removeComponent = i => setComponents(p => p.filter((_, x) => x !== i));
+  const updateComponent = (i, f, v) => setComponents(p => p.map((c, x) => x === i ? { ...c, [f]: v } : c));
 
+  const handleSave = async () => {
+    if (!basicInfo.classId) return alert("Please select a class");
+    if (!basicInfo.section)  return alert("Please select a section");
+    if (!basicInfo.session)  return alert("Please enter session");
+    if (components.length === 0) return alert("Add at least one fee component");
+    if (transportConfig.feeMode === "STOP" && Object.keys(transportConfig.stopFees || {}).length === 0)
+      return alert("Please enter stop-wise transport fees");
 
- const updateComponent = (index, field, value) => {
-  setComponents(prev =>
-    prev.map((c, i) =>
-      i === index ? { ...c, [field]: value } : c
-    )
-  );
-};
-const handleSave = async () => {
-  if (!basicInfo.classId) {
-    alert("Please select a class");
-    return;
-  }
+    const normalizedTransport = transportConfig.feeMode === "STOP"
+      ? { ...transportConfig, stopFees: Object.fromEntries(Object.entries(transportConfig.stopFees).map(([k, v]) => [k, Number(v)])) }
+      : transportConfig;
 
-  if (!basicInfo.session) {
-    alert("Session missing from class");
-    return;
-  }
-if (!basicInfo.section) {
-  alert("Please select a section");
-  return;
-}
+    try {
+      await api.post("/admin/fees/structure", {
+        classId: basicInfo.classId, className: basicInfo.className,
+        section: basicInfo.section, session: basicInfo.session,
+        structureName: basicInfo.structureName, status: "ACTIVE",
+        components, transportConfig: normalizedTransport,
+        financeSummary: { monthlyBase: monthlyTotal, annualBase: annualTotal },
+      });
+      alert("Fee structure saved ✅");
+    } catch (err) {
+      alert(err.response?.data?.message || "Save failed");
+    }
+  };
 
-  if (components.length === 0) {
-    alert("Add at least one fee component");
-    return;
-  }
+  const TABS = [
+    { key: "class",   label: "Class Fee Structure", icon: <BookOpen size={14} /> },
+    { key: "student", label: "Student Override",     icon: <ChevronDown size={14} /> },
+    { key: "explore", label: "Fee Explorer",         icon: <BarChart2 size={14} /> },
+  ];
 
-
-
-
-
-
- 
-
-  // 🚨 STOP MODE VALIDATION (VERY IMPORTANT)
-if (
-  transportConfig.feeMode === "STOP" &&
-  (!transportConfig.stopFees ||
-    Object.keys(transportConfig.stopFees).length === 0)
-) {
-  alert("Please enter STOP-wise transport fees");
-  return;
-}
-
-const normalizedTransport =
-  transportConfig.feeMode === "STOP"
-    ? {
-        ...transportConfig,
-        stopFees: Object.fromEntries(
-          Object.entries(transportConfig.stopFees).map(
-            ([k, v]) => [k, Number(v)]
-          )
-        ),
-         stopNames: transportConfig.stopNames, 
-      }
-    : transportConfig;
-
-  try {
- const payload = {
-  classId: basicInfo.classId,
-  className: basicInfo.className,
-  section: basicInfo.section,
-  session: basicInfo.session,
-  structureName: basicInfo.structureName,
-
-  status: "ACTIVE",
-
-  components,
-  transportConfig: normalizedTransport,
-
-  // 🔥🔥🔥 THIS WAS MISSING
-  financeSummary: {
-    monthlyBase: monthlyFeeTotal,
-    annualBase: annualFeeTotal,
-  },
-};
-
-
-    await api.post("/admin/fees/structure", payload);
-
-    alert("Fee structure saved successfully ✅");
-  } catch (error) {
-    console.error(error);
-    alert("Save failed ❌");
-  }
-};
-
-
-
-  /* ================= UI ================= */
   return (
-    <div className="p-6 space-y-8">
+    <div className="space-y-5 text-gray-100">
+
       {/* HEADER */}
       <div>
-        <h1 className="text-2xl font-bold">
-          Fee Structure Management
-        </h1>
-        <p className="text-sm text-gray-500">
-          Realistic school fee setup with transport rules
-        </p>
+        <h1 className="text-2xl font-bold text-white tracking-tight">Fee Structure Management</h1>
+        <p className="text-sm text-gray-500 mt-0.5">Configure class-level fees, transport rules & overrides</p>
       </div>
 
-      {/* MODE SWITCH */}
-      <div className="flex gap-2">
-        {["class", "student", "explore"].map(m => (
-
-          <button
-            key={m}
-            onClick={() => setMode(m)}
-            className={`px-4 py-2 rounded-lg text-sm ${
-              mode === m
-                ? "bg-blue-600 text-white"
-                : "border hover:bg-gray-50"
-            }`}
-          >
-            {m === "class"
-  ? "Class Fee Structure"
-  : m === "student"
-  ? "Student Fee Override"
-  : "Fee Explorer"}
-
+      {/* TABS */}
+      <div className="flex gap-2 flex-wrap">
+        {TABS.map(t => (
+          <button key={t.key} onClick={() => setMode(t.key)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl border text-sm font-medium transition
+              ${mode === t.key
+                ? "bg-indigo-600 border-indigo-500 text-white"
+                : "bg-white/[0.04] border-white/[0.08] text-gray-400 hover:bg-white/[0.08] hover:text-gray-200"
+              }`}>
+            {t.icon} {t.label}
           </button>
         ))}
       </div>
 
-      {/* ================= CLASS MODE ================= */}
+      {/* ===== CLASS MODE ===== */}
       {mode === "class" && (
-        <>
-          {/* STRUCTURE INFO */}
-          <section className="bg-white border rounded-xl p-6 space-y-4">
-            <h2 className="font-semibold text-lg">
-              Structure Details
-            </h2>
+        <div className="space-y-4">
 
-            <div className="grid md:grid-cols-3 gap-4">
-        <input
-  className="input"
-  placeholder="Academic Session (e.g. 2024-25)"
-  value={basicInfo.session}
-  onChange={e =>
-    setBasicInfo(prev => ({
-      ...prev,
-      session: e.target.value,
-    }))
-  }
-/>
-
-<select
-  className="input"
-  value={basicInfo.className}
-  onChange={e => {
-    const selected = classes.find(c => c.name === e.target.value);
-
-    // ✅ same class ke saare sections nikalo
-    const classSections = classes
-      .filter(c => c.name === selected?.name)
-      .map(c => c.section)
-      .filter(Boolean);
-
-    // ✅ ek hi baar basicInfo update
-    setBasicInfo(prev => ({
-      ...prev,
-      className: selected?.name || "",
-        classId: selected?._id || "",  
-      section: "",
-      structureName: "",
-    }));
-
-    // ✅ yahin se section aayega
-    setSections([...new Set(classSections)]);
-
-    // ✅ transport reset (ye sahi tha)
-    setTransportConfig({
-      feeMode: "TRANSPORT",
-      vehicleId: "",
-      transportFee: "",
-      stopFees: {},
-       stopNames: {},
-    });
-  }}
->
-  
-
-  <option value="">Select Class</option>
- {[...new Set(classes.map(c => c.name))].map(name => (
-  <option key={name} value={name}>
-    {name}
-  </option>
-))}
-</select>
-
-  {/* SECTION SELECT */}
-<select
-  className="input"
-  value={basicInfo.section}
-  onChange={e =>
-    setBasicInfo(prev => ({
-      ...prev,
-      section: e.target.value,
-    }))
-  }
-  disabled={sections.length === 0}
->
-  <option value="">Select Section</option>
-
-  {sections.map(sec => (
-    <option key={sec} value={sec}>
-      Section {sec}
-    </option>
-  ))}
-</select>
-
-              <input
-                className="input bg-gray-50"
-                disabled
-                value={basicInfo.structureName}
-              />
+          {/* Structure Details */}
+          <Card title="Structure Details">
+            <div className="grid sm:grid-cols-3 gap-3">
+              <Field label="Academic Session *">
+                <DI placeholder="e.g. 2024-25" value={basicInfo.session}
+                  onChange={e => setBasicInfo(p => ({ ...p, session: e.target.value }))} />
+              </Field>
+              <Field label="Class *">
+                <DS value={basicInfo.className} onChange={e => {
+                  const sel = classes.find(c => c.name === e.target.value);
+                  const secs = [...new Set(classes.filter(c => c.name === sel?.name).map(c => c.section).filter(Boolean))];
+                  setBasicInfo(p => ({ ...p, className: sel?.name || "", classId: sel?._id || "", section: "", structureName: "" }));
+                  setSections(secs);
+                  setTransportConfig({ feeMode: "TRANSPORT", vehicleId: "", transportFee: "", stopFees: {}, stopNames: {} });
+                }}>
+                  <option value="" className="bg-[#1a1a1a]">Select Class</option>
+                  {[...new Set(classes.map(c => c.name))].map(n => <option key={n} value={n} className="bg-[#1a1a1a]">{n}</option>)}
+                </DS>
+              </Field>
+              <Field label="Section *">
+                <DS value={basicInfo.section} disabled={!sections.length}
+                  onChange={e => setBasicInfo(p => ({ ...p, section: e.target.value }))}>
+                  <option value="" className="bg-[#1a1a1a]">Select Section</option>
+                  {sections.map(s => <option key={s} value={s} className="bg-[#1a1a1a]">Section {s}</option>)}
+                </DS>
+              </Field>
             </div>
-          </section>
-
-          {/* FEE COMPONENTS */}
-          <section className="bg-white border rounded-xl p-6 space-y-4">
-            <div className="flex justify-between items-center">
-              <h2 className="font-semibold text-lg">
-                Fee Components
-              </h2>
-              <button
-                onClick={addComponent}
-                className="btn-primary"
-              >
-                + Add Component
-              </button>
-            </div>
-
-            {components.map((c, i) => (
-              <div
-                key={i}
-                className="grid md:grid-cols-6 gap-4 items-center"
-              >
-                <input
-                  className="input"
-                  placeholder="Component Name"
-                  value={c.name}
-                  onChange={e =>
-  updateComponent(i, "name", e.target.value)
-}
-
-                />
-
-                <input
-                  type="number"
-                  className="input"
-                  placeholder="Amount"
-                  value={c.amount}
-                  onChange={e =>
-  updateComponent(i, "amount", e.target.value)
-}
-
-                />
-
-                <select
-                  className="input"
-                  value={c.frequency}
-                onChange={e =>
-  updateComponent(i, "frequency", e.target.value)
-}
-
-                >
-                  <option>Monthly</option>
-                  <option>One Time</option>
-                </select>
-
-                <label className="flex items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={c.optional}
-                 onChange={() =>
-  updateComponent(i, "optional", !c.optional)
-}
-
-                  />
-                  Optional
-                </label>
-
-                <label className="flex items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={c.refundable}
-                  onChange={() =>
-  updateComponent(i, "refundable", !c.refundable)
-}
-
-                  />
-                  Refundable
-                </label>
+            {basicInfo.structureName && (
+              <div className="mt-3 px-3 py-2 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-sm font-medium">
+                {basicInfo.structureName}
               </div>
-            ))}
-          </section>
+            )}
+          </Card>
 
-          {/* 🚍 TRANSPORT */}
-          <section className="bg-indigo-50 border border-indigo-200 rounded-xl p-6 space-y-6">
-            <h2 className="text-lg font-semibold text-indigo-700">
-              🚍 Transport Fee
-            </h2>
-
-            {/* MODE */}
-            <div className="flex gap-6">
-              {["TRANSPORT", "STOP"].map(m => (
-                <label key={m} className="flex items-center gap-2">
-                  <input
-                    type="radio"
-                    checked={transportConfig.feeMode === m}
-                    onChange={() =>
-                      setTransportConfig(prev => ({
-                        ...prev,
-                        feeMode: m,   
-                      }))
-                    }
-                  />
-                  {m === "TRANSPORT"
-                    ? "Transport Wise (Class level)"
-                    : "Stop Wise (Student level)"}
-                </label>
-              ))}
-            </div>
-
-            {/* ROUTE */}
-    {/* ROUTE */}
-<select
-  className="input"
-  value={transportConfig.vehicleId}
-  onChange={e =>
-    setTransportConfig(prev => ({
-      ...prev,
-      vehicleId: e.target.value,
-      stopFees: {},          // ✅ route change → reset stop fees
-    }))
-  }
->
-  <option value="">Select Transport / Route</option>
-  {vehicles.map(v => (
-    <option key={v._id} value={v._id}>
-      {v.vehicleNo} – {v.route?.routeName}
-    </option>
-  ))}
-</select>
-
-
-           {/* TRANSPORT WISE */}
-{transportConfig.feeMode === "TRANSPORT" && (
-  <input
-    type="number"
-    className="input"
-    placeholder="Monthly Transport Fee (₹)"
-    value={transportConfig.transportFee}
-    onChange={e =>
-      setTransportConfig(prev => ({
-        ...prev,
-        transportFee: e.target.value,
-      }))
-    }
-    disabled={!transportConfig.vehicleId}
-  />
-)}
-
-
-     {/* STOP WISE */}
-{transportConfig.feeMode === "STOP" &&
-  selectedVehicle?.route?.stops && (
-    <div className="bg-white border rounded-lg overflow-hidden">
-      <div className="grid grid-cols-2 font-semibold bg-gray-100 px-4 py-2">
-        <span>Stop</span>
-        <span>Monthly Fee (₹)</span>
-      </div>
-
-      {selectedVehicle.route.stops.map((s, idx) => (
-  <div
-     key={`${transportConfig.vehicleId}-${idx}`}   // ✅ STABLE + UNIQUE
-    className="grid grid-cols-2 px-4 py-2 border-t"
-  >
-
-          <span>{s.stopName}</span>
-       <input
-  type="number"
-  name={`stop-fee-${idx}`}     // 🔥 UNIQUE NAME
-  autoComplete="off"          // 🔥 BROWSER AUTOFILL OFF
-  inputMode="numeric"
-  className="input"
-  value={transportConfig.stopFees[idx] ?? ""}
-  onChange={e =>
-    setTransportConfig(prev => ({
-      ...prev,
-      stopFees: {
-        ...prev.stopFees,
-        [idx]: e.target.value,
-      }, stopNames: {
-        ...prev.stopNames,
-        [idx]: s.stopName,   // 🔥 YAHI MISSING THA
-      },
-    }))
-  }
-/>
-
-
-        </div>
-      ))}
-    </div>
-)}
-
-
-          </section>
-
-          {/* 📊 FINANCE SUMMARY */}
-          <section className="bg-blue-50 border border-blue-200 rounded-xl p-6 space-y-4">
-            <h3 className="font-semibold text-blue-700 text-lg">
-              Finance Summary
-            </h3>
-
-            <p>Session: {basicInfo.session || "—"}</p>
-            <p>Class: {basicInfo.className || "—"}</p>
-
-            <div className="grid md:grid-cols-2 gap-4">
-              <div className="bg-white border rounded-lg p-4">
-                <p className="text-sm text-gray-500">
-                  Monthly Base Fee
-                </p>
-                <p className="text-xl font-bold">
-                  ₹{monthlyFeeTotal}
-                </p>
+          {/* Fee Components */}
+          <Card title="Fee Components" action={
+            <button onClick={addComponent}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-500/15 border border-indigo-500/30 text-indigo-400 hover:bg-indigo-500/25 text-xs font-semibold transition">
+              <Plus size={13} /> Add Component
+            </button>
+          }>
+            <div className="space-y-2">
+              {/* header */}
+              <div className="grid grid-cols-[2fr_1.2fr_1fr_0.8fr_0.8fr_auto] gap-3 px-3 py-2 bg-white/[0.03] rounded-lg text-[11px] font-semibold uppercase tracking-wider text-gray-600">
+                <span>Name</span><span>Amount (₹)</span><span>Frequency</span>
+                <span className="text-center">Optional</span><span className="text-center">Refundable</span><span />
               </div>
-
-              <div className="bg-white border rounded-lg p-4">
-                <p className="text-sm text-gray-500">
-                  Annual Base Fee
-                </p>
-                <p className="text-xl font-bold">
-                  ₹{annualFeeTotal}
-                </p>
-              </div>
-            </div>
-
-            <div className="bg-white border rounded-lg overflow-hidden mt-4">
-              <div className="grid grid-cols-4 bg-gray-100 px-4 py-2 font-semibold text-sm">
-                <span>Component</span>
-                <span>Frequency</span>
-                <span>Monthly</span>
-                <span>Annual</span>
-              </div>
-
-              {componentBreakdown.map((c, i) => (
-                <div
-                  key={i}
-                  className="grid grid-cols-4 px-4 py-2 text-sm border-t"
-                >
-                  <span>{c.name}</span>
-                  <span>{c.frequency}</span>
-                  <span>₹{c.monthly}</span>
-                  <span>₹{c.annual}</span>
+              {components.map((c, i) => (
+                <div key={i} className="grid grid-cols-[2fr_1.2fr_1fr_0.8fr_0.8fr_auto] gap-3 items-center px-3 py-2 rounded-lg bg-white/[0.02] border border-white/[0.05]">
+                  <DI placeholder="Component name" value={c.name} onChange={e => updateComponent(i, "name", e.target.value)} />
+                  <DI type="number" placeholder="0" value={c.amount} onChange={e => updateComponent(i, "amount", e.target.value)} />
+                  <DS value={c.frequency} onChange={e => updateComponent(i, "frequency", e.target.value)}>
+                    <option className="bg-[#1a1a1a]">Monthly</option>
+                    <option className="bg-[#1a1a1a]">One Time</option>
+                  </DS>
+                  <div className="flex justify-center">
+                    <input type="checkbox" checked={c.optional} onChange={() => updateComponent(i, "optional", !c.optional)} className="accent-indigo-500 w-4 h-4" />
+                  </div>
+                  <div className="flex justify-center">
+                    <input type="checkbox" checked={c.refundable} onChange={() => updateComponent(i, "refundable", !c.refundable)} className="accent-indigo-500 w-4 h-4" />
+                  </div>
+                  <button onClick={() => removeComponent(i)} className="p-1 rounded text-gray-600 hover:text-red-400 hover:bg-red-500/10 transition">
+                    <Trash2 size={13} />
+                  </button>
                 </div>
               ))}
+            </div>
+          </Card>
 
+          {/* Transport */}
+          <Card title="Transport Fee" icon={<Bus size={14} className="text-indigo-400" />}>
+            {/* mode toggle */}
+            <div className="flex gap-3 mb-4">
+              {[["TRANSPORT","Class Level (Fixed)"],["STOP","Stop Wise (Per Student)"]].map(([m, label]) => (
+                <button key={m} onClick={() => setTransportConfig(p => ({ ...p, feeMode: m }))}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl border text-sm font-medium transition
+                    ${transportConfig.feeMode === m
+                      ? "bg-indigo-600 border-indigo-500 text-white"
+                      : "bg-white/[0.04] border-white/[0.08] text-gray-400 hover:bg-white/[0.08]"
+                    }`}>
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            {/* route select */}
+            <Field label="Route / Vehicle">
+              <DS value={transportConfig.vehicleId}
+                onChange={e => setTransportConfig(p => ({ ...p, vehicleId: e.target.value, stopFees: {}, stopNames: {} }))}>
+                <option value="" className="bg-[#1a1a1a]">Select Route</option>
+                {vehicles.map(v => <option key={v._id} value={v._id} className="bg-[#1a1a1a]">{v.vehicleNo} – {v.route?.routeName}</option>)}
+              </DS>
+            </Field>
+
+            {/* transport wise */}
+            {transportConfig.feeMode === "TRANSPORT" && (
+              <div className="mt-3">
+                <Field label="Monthly Transport Fee (₹)">
+                  <DI type="number" placeholder="0" value={transportConfig.transportFee} disabled={!transportConfig.vehicleId}
+                    onChange={e => setTransportConfig(p => ({ ...p, transportFee: e.target.value }))} />
+                </Field>
+              </div>
+            )}
+
+            {/* stop wise */}
+            {transportConfig.feeMode === "STOP" && selectedVehicle?.route?.stops && (
+              <div className="mt-3 rounded-xl border border-white/[0.07] overflow-hidden">
+                <div className="grid grid-cols-2 px-4 py-2.5 bg-white/[0.04] border-b border-white/[0.06] text-[11px] font-semibold uppercase tracking-wider text-gray-600">
+                  <span>Stop Name</span><span>Monthly Fee (₹)</span>
+                </div>
+                {selectedVehicle.route.stops.map((s, idx) => (
+                  <div key={idx} className="grid grid-cols-2 px-4 py-2.5 border-b border-white/[0.04] items-center">
+                    <span className="text-sm text-gray-300">{s.stopName}</span>
+                    <DI type="number" placeholder="0" value={transportConfig.stopFees[idx] ?? ""}
+                      onChange={e => setTransportConfig(p => ({
+                        ...p,
+                        stopFees: { ...p.stopFees, [idx]: e.target.value },
+                        stopNames: { ...p.stopNames, [idx]: s.stopName },
+                      }))} />
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
+
+          {/* Finance Summary */}
+          <Card title="Finance Summary" icon={<BarChart2 size={14} className="text-emerald-400" />}>
+            <div className="grid sm:grid-cols-2 gap-3 mb-4">
+              <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/20 p-4">
+                <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Monthly Base</p>
+                <p className="text-2xl font-bold text-emerald-400">₹{monthlyTotal.toLocaleString("en-IN")}</p>
+              </div>
+              <div className="rounded-xl bg-indigo-500/10 border border-indigo-500/20 p-4">
+                <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Annual Base</p>
+                <p className="text-2xl font-bold text-indigo-400">₹{annualTotal.toLocaleString("en-IN")}</p>
+              </div>
+            </div>
+
+            {/* breakdown table */}
+            <div className="rounded-xl border border-white/[0.07] overflow-hidden">
+              <div className="grid grid-cols-4 px-4 py-2.5 bg-white/[0.04] border-b border-white/[0.06] text-[11px] font-semibold uppercase tracking-wider text-gray-600">
+                <span>Component</span><span>Frequency</span><span>Monthly</span><span>Annual</span>
+              </div>
+              {componentBreakdown.map((c, i) => (
+                <div key={i} className="grid grid-cols-4 px-4 py-2.5 border-b border-white/[0.04] text-sm">
+                  <span className="text-gray-200">{c.name}</span>
+                  <span className="text-gray-500">{c.frequency}</span>
+                  <span className="text-gray-300">₹{c.monthly.toLocaleString("en-IN")}</span>
+                  <span className="text-gray-300">₹{c.annual.toLocaleString("en-IN")}</span>
+                </div>
+              ))}
               {transportConfig.vehicleId && (
-                <div className="grid grid-cols-4 px-4 py-2 text-sm border-t bg-indigo-50">
-                  <span>Transport Fee</span>
-                  <span>Monthly</span>
-                  <span>
-                    {transportConfig.feeMode === "TRANSPORT"
-                      ? `₹${transportConfig.transportFee || 0}`
-                      : "—"}
-                  </span>
-                  <span>
-                    {transportConfig.feeMode === "TRANSPORT"
-                      ? `₹${
-                          (transportConfig.transportFee || 0) *
-                          12
-                        }`
-                      : "Applied per student"}
-                  </span>
+                <div className="grid grid-cols-4 px-4 py-2.5 text-sm bg-indigo-500/5">
+                  <span className="text-indigo-400">Transport</span>
+                  <span className="text-gray-500">Monthly</span>
+                  <span className="text-indigo-400">{transportConfig.feeMode === "TRANSPORT" ? `₹${Number(transportConfig.transportFee||0).toLocaleString("en-IN")}` : "Per Stop"}</span>
+                  <span className="text-indigo-400">{transportConfig.feeMode === "TRANSPORT" ? `₹${(Number(transportConfig.transportFee||0)*12).toLocaleString("en-IN")}` : "Per Stop"}</span>
                 </div>
               )}
             </div>
+          </Card>
 
-            {transportConfig.feeMode === "STOP" && (
-              <p className="text-xs text-gray-600">
-                Transport fee will be applied per student based on selected stop
-              </p>
-            )}
-          </section>
-        </>
+          {/* Save */}
+          <div className="flex justify-end">
+            <button onClick={handleSave} disabled={!basicInfo.classId || !basicInfo.section}
+              className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white text-sm font-semibold transition">
+              <Save size={15} /> Save Fee Structure
+            </button>
+          </div>
+        </div>
       )}
 
-      {/* ================= STUDENT MODE ================= */}
+      {/* ===== STUDENT OVERRIDE ===== */}
       {mode === "student" && (
-        <section className="bg-white border rounded-xl p-6 space-y-4">
-          <h2 className="font-semibold text-lg">
-            Student Fee Exception
-          </h2>
-
-
-
-          <input
-            className="input"
-            placeholder="Student ID"
-            value={studentFee.studentId}
-            onChange={e =>
-              setStudentFee({
-                ...studentFee,
-                studentId: e.target.value,
-              })
-            }
-          />
-
-          <input
-            type="number"
-            className="input"
-            placeholder="Override Total Fee"
-            value={studentFee.overrideAmount}
-            onChange={e =>
-              setStudentFee({
-                ...studentFee,
-                overrideAmount: e.target.value,
-              })
-            }
-          />
-
-          <textarea
-            className="input"
-            placeholder="Mandatory Reason"
-            value={studentFee.reason}
-            onChange={e =>
-              setStudentFee({
-                ...studentFee,
-                reason: e.target.value,
-              })
-            }
-          />
-        </section>
-        
+        <Card title="Student Fee Override">
+          <div className="space-y-3 max-w-md">
+            <Field label="Student ID"><DI placeholder="Enter student ID" value={studentFee.studentId} onChange={e => setStudentFee(p => ({ ...p, studentId: e.target.value }))} /></Field>
+            <Field label="Override Amount (₹)"><DI type="number" placeholder="0" value={studentFee.overrideAmount} onChange={e => setStudentFee(p => ({ ...p, overrideAmount: e.target.value }))} /></Field>
+            <Field label="Reason *">
+              <textarea value={studentFee.reason} onChange={e => setStudentFee(p => ({ ...p, reason: e.target.value }))} rows={3} placeholder="Mandatory reason for override…"
+                className="w-full bg-white/[0.05] border border-white/10 text-gray-200 placeholder-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500/60 transition resize-none" />
+            </Field>
+            <button className="flex items-center gap-2 px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold transition">
+              <Save size={14} /> Apply Override
+            </button>
+          </div>
+        </Card>
       )}
 
-      {/* ================= EXPLORE MODE ================= */}
-{mode === "explore" && (
-  <section className="bg-white border rounded-xl p-6">
-    <FeeExplore />
-  </section>
-)}
-
-      {/* ACTION */}
-      <div className="flex justify-end gap-3">
-       <button
-  type="button"
-   disabled={!basicInfo.classId || !basicInfo.section}
-  onClick={handleSave}
-  className={`btn-primary ${
-    !basicInfo.classId || !basicInfo.section? "opacity-50 cursor-not-allowed" : ""
-  }`}
->
-  Save Fee Structure
-</button>
-
-
-      </div>
+      {/* ===== EXPLORE ===== */}
+      {mode === "explore" && <FeeExplore />}
     </div>
   );
+}
+
+/* ===== HELPERS ===== */
+function Card({ title, icon, action, children }) {
+  return (
+    <div className="rounded-2xl border border-white/[0.08] bg-[#161616] p-5">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+          {icon}<span>{title}</span>
+        </div>
+        {action}
+      </div>
+      {children}
+    </div>
+  );
+}
+function Field({ label, children }) {
+  return <div><label className="block text-xs text-gray-500 mb-1.5 font-medium">{label}</label>{children}</div>;
+}
+function DI(props) {
+  return <input {...props} className={`w-full bg-white/[0.05] border border-white/10 text-gray-200 placeholder-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500/60 transition ${props.disabled ? "opacity-50 cursor-not-allowed" : ""}`} />;
+}
+function DS({ children, ...props }) {
+  return <select {...props} className={`w-full bg-white/[0.05] border border-white/10 text-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500/60 transition ${props.disabled ? "opacity-50 cursor-not-allowed" : ""}`}>{children}</select>;
 }

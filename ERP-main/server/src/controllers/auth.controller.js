@@ -113,6 +113,8 @@ if (user.role === "teacher") {
    res.json({
   token,
   role: user.role,
+  name: user.name,
+  email: user.email,
   forcePasswordChange,
   sessionToken // ✅ frontend ko ye chahiye
 });
