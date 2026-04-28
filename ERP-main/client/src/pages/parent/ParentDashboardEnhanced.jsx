@@ -1,328 +1,290 @@
-import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import { LayoutDashboard, ClipboardList, CalendarDays, GraduationCap, Wallet, User, BookOpen, Megaphone } from "lucide-react";
 import api from "../../services/api";
+
+import ParentSidebar from "../../components/parent/ParentSidebar";
+import ParentOverview from "../../components/parent/ParentOverview";
+import ParentAttendance from "../../components/parent/ParentAttendance";
+import ParentHomework from "../../components/parent/ParentHomework";
+import ParentAnnouncements from "../../components/parent/ParentAnnouncements";
+import DarkCard from "../../components/parent/DarkCard";
+import Metric from "../../components/parent/Metric";
+import InfoRow from "../../components/parent/InfoRow";
 
 export default function ParentDashboardEnhanced() {
   const navigate = useNavigate();
-  const [parentData, setParentData] = useState(null);
-  const [children, setChildren] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState("overview");
+
+  const [parent,          setParent]          = useState(null);
+  const [students,        setStudents]        = useState([]);
+  const [activeStudentId, setActiveStudentId] = useState(null);
+  const [loading,         setLoading]         = useState(true);
+
+  const [attendance, setAttendance] = useState([]);
+  const [timetable,  setTimetable]  = useState([]);
+  const [results,    setResults]    = useState(null);
+  const [fees,       setFees]       = useState(null);
+
+  const [tab,       setTab]       = useState("overview");
+  const [collapsed, setCollapsed] = useState(false);
+  const [isMobile,  setIsMobile]  = useState(window.innerWidth < 768);
 
   useEffect(() => {
-    fetchParentData();
+    const fn = () => { const m = window.innerWidth < 768; setIsMobile(m); if (!m) setCollapsed(false); };
+    window.addEventListener("resize", fn);
+    return () => window.removeEventListener("resize", fn);
   }, []);
 
-  const fetchParentData = async () => {
-    try {
-      const res = await api.get("/parent-dashboard/dashboard");
-      setParentData(res.data.parent);
-      setChildren(res.data.children || []);
-    } catch (error) {
-      console.error("Failed to fetch parent data:", error);
-      // Don't set any demo data - show error message instead
-      setParentData(null);
-      setChildren([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+  useEffect(() => {
+    api.get("/parent/me")
+      .then(res => {
+        setParent(res.data.parent);
+        const list = res.data.students || [];
+        setStudents(list);
+        setActiveStudentId(res.data.activeStudentId || list[0]?._id || null);
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    if (!activeStudentId) return;
+    setAttendance([]); setTimetable([]); setResults(null); setFees(null);
+    Promise.allSettled([
+      api.get(`/parent/attendance/${activeStudentId}`),
+      api.get(`/parent/timetable/${activeStudentId}`),
+      api.get(`/parent/results/${activeStudentId}`),
+      api.get(`/parent/fees/${activeStudentId}`),
+    ]).then(([a, t, r, f]) => {
+      if (a.status === "fulfilled") setAttendance(a.value.data || []);
+      if (t.status === "fulfilled") setTimetable(t.value.data  || []);
+      if (r.status === "fulfilled") setResults(r.value.data    || null);
+      if (f.status === "fulfilled") setFees(f.value.data       || null);
+    });
+  }, [activeStudentId]);
+
+  const now      = new Date();
+  const monthKey = now.toISOString().slice(0, 7);
+  const monthAtt = attendance.filter(a => a.date?.startsWith(monthKey));
+  const stats    = useMemo(() => {
+    const total   = monthAtt.length;
+    const present = monthAtt.filter(a => a.status === "present").length;
+    return { total, present, absent: total - present,
+             percent: total ? Math.round((present / total) * 100) : 0 };
+  }, [monthAtt]);
+
+  const activeStudent = students.find(s => s._id === activeStudentId);
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0B1220] flex items-center justify-center">
-        <div className="text-white">Loading...</div>
+      <div className="min-h-screen bg-[#0f0f0f] flex items-center justify-center text-gray-400 text-sm">
+        Loading...
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#0B1220] text-white p-6">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-8"
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-4xl font-bold">Parent Dashboard</h1>
-              <p className="text-gray-400 mt-2">
-                Welcome back, {parentData?.name}
-              </p>
-            </div>
-            <div className="flex items-center gap-4">
-              <button
-                onClick={() => {
-                  localStorage.removeItem("token");
-                  navigate("/login");
-                }}
-                className="px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg transition"
-              >
-                Logout
-              </button>
-            </div>
-          </div>
-        </motion.div>
+    <div className="min-h-screen bg-[#0f0f0f] flex">
+      <ParentSidebar
+        parent={parent}
+        students={students}
+        activeStudentId={activeStudentId}
+        setActiveStudentId={id => { setActiveStudentId(id); setTab("overview"); }}
+        tab={tab} setTab={setTab}
+        collapsed={collapsed} isMobile={isMobile}
+        onToggle={() => setCollapsed(c => !c)}
+        navigate={navigate}
+      />
 
-        {/* Children Selector */}
-        {children.length > 1 && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="mb-8"
-          >
-            <div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 border border-white/20">
-              <h3 className="text-lg font-semibold mb-4">Select Child</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {children.map((child) => (
-                  <div
-                    key={child._id}
-                    className="bg-white/5 rounded-lg p-4 cursor-pointer hover:bg-white/10 transition border border-white/20"
-                    onClick={() => setSelectedChild(child)}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center">
-                        <span className="text-white font-bold">
-                          {child.name?.charAt(0)?.toUpperCase()}
-                        </span>
+      <main className={`flex-1 min-h-screen p-6 md:p-8 overflow-y-auto transition-all duration-300
+        ${collapsed ? "md:ml-20" : "md:ml-72"}`}>
+
+        {tab === "overview" && (
+          <ParentOverview
+            parent={parent}
+            activeStudent={activeStudent}
+            stats={stats}
+            results={results}
+            timetable={timetable}
+          />
+        )}
+
+        {tab === "attendance" && (
+          <ParentAttendance stats={stats} monthAtt={monthAtt} />
+        )}
+
+        {tab === "timetable" && (
+          <DarkCard title="Weekly Timetable">
+            {timetable.length === 0 ? (
+              <p className="text-sm text-gray-500">No timetable published yet.</p>
+            ) : (
+              <div className="grid gap-4 md:grid-cols-3">
+                {timetable.map(day => (
+                  <div key={day._id} className="bg-white/[0.04] border border-white/[0.08] rounded-xl p-4">
+                    <h4 className="font-semibold text-gray-200 mb-3">{day.day}</h4>
+                    {day.periods.map((p, i) => (
+                      <div key={i} className="bg-white/[0.04] rounded-lg p-2.5 mb-2 text-sm">
+                        <p className="font-medium text-gray-200">{p.subject}</p>
+                        <p className="text-xs text-gray-500">{p.startTime} - {p.endTime}</p>
+                        <p className="text-xs text-gray-600">{p.teacherId?.name || "-"}</p>
                       </div>
-                      <div>
-                        <h4 className="font-semibold">{child.name}</h4>
-                        <p className="text-gray-400">
-                          Class {child.classId?.name} - Section {child.section}
-                        </p>
-                        <p className="text-sm text-gray-500">
-                          Roll No: {child.rollNo}
-                        </p>
-                      </div>
-                    </div>
+                    ))}
                   </div>
                 ))}
               </div>
-            </div>
-          </motion.div>
+            )}
+          </DarkCard>
         )}
 
-        {/* Navigation Tabs */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="mb-8"
-        >
-          <div className="bg-white/10 backdrop-blur-lg rounded-xl p-2 border border-white/20">
-            <div className="flex flex-wrap gap-2">
-              {[
-                { id: "overview", label: "🏠 Overview", icon: "🏠" },
-                { id: "attendance", label: "📊 Attendance", icon: "📊" },
-                { id: "homework", label: "📝 Homework", icon: "📝" },
-                { id: "exams", label: "📚 Exams", icon: "📚" },
-                { id: "fees", label: "💰 Fees", icon: "💰" },
-                { id: "announcements", label: "📢 Announcements", icon: "📢" }
-              ].map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`px-4 py-2 rounded-lg transition ${
-                    activeTab === tab.id
-                      ? "bg-blue-600 text-white"
-                      : "bg-white/10 hover:bg-white/20 text-gray-300"
-                  }`}
-                >
-                  {tab.icon} {tab.label}
-                </button>
-              ))}
-            </div>
+        {tab === "results" && (
+          <div className="space-y-6">
+            {!results ? (
+              <DarkCard title="Results"><p className="text-sm text-gray-500">No published results yet.</p></DarkCard>
+            ) : (
+              <>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <Metric title="Total Marks"  value={results.summary.totalMarks}    accent="indigo" />
+                  <Metric title="Max Marks"    value={results.summary.totalMaxMarks} accent="amber" />
+                  <Metric title="Overall %"    value={`${results.summary.overallPercent}%`} accent="emerald" />
+                  <Metric title="Result"       value={results.summary.overallResult}
+                    accent={results.summary.overallResult === "PASS" ? "emerald" : "rose"} />
+                </div>
+
+                {Object.entries(results.exams || {}).map(([type, list]) => (
+                  <DarkCard key={type} title={`${type} Exams`}>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="text-[10px] uppercase tracking-widest text-gray-600 border-b border-white/[0.06]">
+                            <th className="text-left pb-3 pr-4">Exam</th>
+                            <th className="text-left pb-3 pr-4">Subject</th>
+                            <th className="text-center pb-3 pr-4">Marks</th>
+                            <th className="text-center pb-3 pr-4">Max</th>
+                            <th className="text-center pb-3 pr-4">%</th>
+                            <th className="text-center pb-3">Result</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-white/[0.04]">
+                          {list.map((r, i) => (
+                            <tr key={i} className="text-gray-300">
+                              <td className="py-3 pr-4 font-medium">{r.name}</td>
+                              <td className="py-3 pr-4 text-gray-400">{r.subject}</td>
+                              <td className="py-3 pr-4 text-center font-semibold">
+                                <span className={r.marks === "AB" ? "text-amber-400" : "text-white"}>{r.marks}</span>
+                              </td>
+                              <td className="py-3 pr-4 text-center text-gray-500">{r.maxMarks}</td>
+                              <td className="py-3 pr-4 text-center">
+                                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full
+                                  ${r.percentage >= 75 ? "bg-emerald-500/20 text-emerald-400" :
+                                    r.percentage >= 33 ? "bg-amber-500/20 text-amber-400" :
+                                    "bg-rose-500/20 text-rose-400"}`}>
+                                  {r.percentage}%
+                                </span>
+                              </td>
+                              <td className="py-3 text-center">
+                                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full
+                                  ${r.result === "PASS" || r.result === "PRESENT"
+                                    ? "bg-emerald-500/20 text-emerald-400"
+                                    : r.result === "AB" || r.result === "ABSENT"
+                                    ? "bg-amber-500/20 text-amber-400"
+                                    : "bg-rose-500/20 text-rose-400"}`}>
+                                  {r.result || "-"}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </DarkCard>
+                ))}
+              </>
+            )}
           </div>
-        </motion.div>
+        )}
 
-        {/* Content Area */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="bg-white/10 backdrop-blur-lg rounded-xl p-8 border border-white/20"
-        >
-          {activeTab === "overview" && <OverviewTab children={children} navigate={navigate} />}
-          {activeTab === "attendance" && <AttendanceTab children={children} />}
-          {activeTab === "homework" && <HomeworkTab children={children} />}
-          {activeTab === "exams" && <ExamsTab children={children} />}
-          {activeTab === "fees" && <FeesTab children={children} />}
-          {activeTab === "announcements" && <AnnouncementsTab children={children} />}
-        </motion.div>
-      </div>
-    </div>
-  );
-}
+        {tab === "homework" && (
+          <ParentHomework activeStudentId={activeStudentId} />
+        )}
 
-/* ================= TAB COMPONENTS ================= */
+        {tab === "announcements" && (
+          <ParentAnnouncements activeStudentId={activeStudentId} />
+        )}
 
-function OverviewTab({ children, navigate }) {
-  return (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-bold mb-6">Dashboard Overview</h2>
-      
-      {/* Quick Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <div className="bg-white/5 rounded-xl p-6 border border-white/20">
-          <h3 className="text-lg font-semibold text-blue-400">👦 Children</h3>
-          <p className="text-3xl font-bold mt-2">{children.length}</p>
-        </div>
-        <div className="bg-white/5 rounded-xl p-6 border border-white/20">
-          <h3 className="text-lg font-semibold text-green-400">📅 Today's Attendance</h3>
-          <p className="text-3xl font-bold mt-2">
-            {children.filter(child => {
-              const today = new Date().toISOString().split('T')[0];
-              return child.attendance?.today?.some(a => a.studentId.toString() === child._id && a.status === 'present');
-            }).length} / {children.length}
-          </p>
-          <p className="text-sm text-gray-400">Present today</p>
-        </div>
-        <div className="bg-white/5 rounded-xl p-6 border border-white/20">
-          <h3 className="text-lg font-semibold text-yellow-400">📝 Pending Homework</h3>
-          <p className="text-3xl font-bold mt-2">
-            {children.reduce((total, child) => {
-              return total + (child.homework?.pending || 0);
-            }, 0)}
-          </p>
-          <p className="text-sm text-gray-400">Across all children</p>
-        </div>
-        <div className="bg-white/5 rounded-xl p-6 border border-white/20">
-          <h3 className="text-lg font-semibold text-red-400">💰 Pending Fees</h3>
-          <p className="text-3xl font-bold mt-2">
-            ₹{children.reduce((total, child) => {
-              return total + (child.fees?.pending || 0);
-            }, 0).toLocaleString()}
-          </p>
-          <p className="text-sm text-gray-400">Total pending amount</p>
-        </div>
-      </div>
+        {tab === "fees" && (
+          <div className="space-y-6">
+            {!fees ? (
+              <DarkCard title="Fees"><p className="text-sm text-gray-500">Loading fee details...</p></DarkCard>
+            ) : (
+              <>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  <Metric title="Monthly Tuition" value={`₹${fees.tuition?.monthly?.toLocaleString() || 0}`} accent="indigo" />
+                  <Metric title="Annual Tuition"  value={`₹${fees.tuition?.annual?.toLocaleString()  || 0}`} accent="amber" />
+                  <Metric title="Total Monthly"   value={`₹${fees.total?.monthly?.toLocaleString()   || 0}`} accent="emerald" />
+                </div>
 
-      {/* Children Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {children.map((child) => (
-          <div key={child._id} className="bg-white/5 rounded-xl p-6 border border-white/20">
-            <div className="flex items-center gap-4 mb-4">
-              <div className="w-16 h-16 bg-blue-500 rounded-full flex items-center justify-center">
-                <span className="text-white text-xl font-bold">
-                  {child.name?.charAt(0)?.toUpperCase()}
-                </span>
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold">{child.name}</h3>
-                <p className="text-gray-400">
-                  {child.classId?.name} - Section {child.section}
-                </p>
-                <p className="text-sm text-gray-500">
-                  Roll No: {child.rollNo}
-                </p>
-              </div>
-            </div>
-            
-            <div className="space-y-2">
-              <div className="flex justify-between">
-                <span className="text-gray-400">Today's Attendance:</span>
-                <span className="text-green-400 font-medium">
-                  {child.attendance?.today?.some(a => a.studentId.toString() === child._id && a.status === 'present') ? 'Present' : 'Absent'}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-400">Pending Homework:</span>
-                <span className="text-yellow-400 font-medium">{child.homework?.pending || 0}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-400">Upcoming Exam:</span>
-                <span className="text-blue-400 font-medium">
-                  {child.exams?.upcoming?.[0]?.subject || 'None'}
-                </span>
-              </div>
-            </div>
-            
-            <div className="mt-4 flex gap-2">
-              <button
-                onClick={() => navigate(`/parent/child-profile/${child._id}`)}
-                className="flex-1 px-3 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition text-center"
-              >
-                👤 View Full Profile
-              </button>
-              <button
-                onClick={() => navigate(`/parent/attendance/${child._id}`)}
-                className="flex-1 px-3 py-2 bg-green-600 hover:bg-green-700 rounded-lg transition text-center"
-              >
-                📊 View Attendance
-              </button>
-            </div>
+                <DarkCard title="Fee Breakdown">
+                  <div className="space-y-3">
+                    {(fees.components || []).map((c, i) => (
+                      <div key={i} className="flex items-center justify-between py-2.5 border-b border-white/[0.06] last:border-0">
+                        <div>
+                          <p className="text-sm font-medium text-gray-200">{c.name}</p>
+                          <p className="text-xs text-gray-600">{c.frequency}{c.optional ? " · Optional" : ""}{c.refundable ? " · Refundable" : ""}</p>
+                        </div>
+                        <p className="text-sm font-semibold text-indigo-400">₹{c.amount?.toLocaleString()}</p>
+                      </div>
+                    ))}
+                    {(fees.components || []).length === 0 && (
+                      <p className="text-sm text-gray-500">No fee components configured.</p>
+                    )}
+                  </div>
+                </DarkCard>
+
+                {fees.transport?.enabled && (
+                  <DarkCard title="Transport Fee">
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <InfoRow label="Mode"        value={fees.transport.mode} />
+                      {fees.transport.stopName   && <InfoRow label="Stop"         value={fees.transport.stopName} />}
+                      {fees.transport.vehicleNo  && <InfoRow label="Vehicle No"   value={fees.transport.vehicleNo} />}
+                      {fees.transport.routeName  && <InfoRow label="Route"        value={fees.transport.routeName} />}
+                      {fees.transport.pickupTime && <InfoRow label="Pickup Time"  value={fees.transport.pickupTime} />}
+                      <InfoRow label="Monthly Fee" value={`₹${fees.transport.monthly?.toLocaleString()}`} />
+                      <InfoRow label="Annual Fee"  value={`₹${fees.transport.annual?.toLocaleString()}`} />
+                    </div>
+                  </DarkCard>
+                )}
+              </>
+            )}
           </div>
+        )}
+
+        {tab === "profile" && (
+          <DarkCard title="Parent Profile">
+            <div className="grid md:grid-cols-3 gap-6 text-sm">
+              <InfoRow label="Name"     value={parent?.name} />
+              <InfoRow label="Phone"    value={parent?.phone} />
+              <InfoRow label="Children" value={students.length} />
+            </div>
+          </DarkCard>
+        )}
+      </main>
+
+      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-[#111111] border-t border-white/[0.06] flex justify-around py-3 z-50">
+        {[
+          { id: "overview",      icon: <LayoutDashboard size={20} /> },
+          { id: "attendance",    icon: <ClipboardList size={20} /> },
+          { id: "timetable",     icon: <CalendarDays size={20} /> },
+          { id: "results",       icon: <GraduationCap size={20} /> },
+          { id: "homework",      icon: <BookOpen size={20} /> },
+          { id: "fees",          icon: <Wallet size={20} /> },
+          { id: "announcements", icon: <Megaphone size={20} /> },
+          { id: "profile",       icon: <User size={20} /> },
+        ].map(({ id, icon }) => (
+          <button key={id} onClick={() => setTab(id)}
+            className={`transition ${tab === id ? "text-indigo-400" : "text-gray-600 hover:text-gray-400"}`}>
+            {icon}
+          </button>
         ))}
-      </div>
-    </div>
-  );
-}
-
-function AttendanceTab({ children }) {
-  return (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-bold mb-6">📊 Attendance Tracking</h2>
-      
-      <div className="text-center py-12">
-        <p className="text-gray-400">Attendance data will be loaded from API...</p>
-        <p className="text-sm text-gray-500 mt-2">This will show real attendance records from the database</p>
-      </div>
-    </div>
-  );
-}
-
-function HomeworkTab({ children }) {
-  return (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-bold mb-6">📝 Homework & Assignments</h2>
-      
-      <div className="text-center py-12">
-        <p className="text-gray-400">Homework data will be loaded from API...</p>
-        <p className="text-sm text-gray-500 mt-2">This will show real homework assignments from the database</p>
-      </div>
-    </div>
-  );
-}
-
-function ExamsTab({ children }) {
-  return (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-bold mb-6">📚 Exams & Results</h2>
-      
-      <div className="text-center py-12">
-        <p className="text-gray-400">Exam data will be loaded from API...</p>
-        <p className="text-sm text-gray-500 mt-2">This will show real exam schedules and results from the database</p>
-      </div>
-    </div>
-  );
-}
-
-function FeesTab({ children }) {
-  return (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-bold mb-6">💰 Fee Management</h2>
-      
-      <div className="text-center py-12">
-        <p className="text-gray-400">Fee data will be loaded from API...</p>
-        <p className="text-sm text-gray-500 mt-2">This will show real fee structure and payment status from the database</p>
-      </div>
-    </div>
-  );
-}
-
-function AnnouncementsTab({ children }) {
-  return (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-bold mb-6">📢 School Announcements</h2>
-      
-      <div className="text-center py-12">
-        <p className="text-gray-400">Announcements will be loaded from API...</p>
-        <p className="text-sm text-gray-500 mt-2">This will show real school announcements from the database</p>
       </div>
     </div>
   );
