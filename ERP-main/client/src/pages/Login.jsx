@@ -124,7 +124,7 @@ function Login() {
         </button>
 
         <p className="text-xs text-gray-400 text-center mt-4">
-          JN Public School • Secure Academic System
+          Vidyalaya • Secure Academic System
         </p>
       </form>
     </div>
